@@ -1,0 +1,133 @@
+//
+// StudyGoalWidgetData.swift
+// Studies
+//
+// Created by takuma on 2025/08/16.
+//
+
+import Foundation
+import SwiftUI
+import WidgetKit
+
+// MARK: - Widget用のデータ構造
+
+struct WidgetStudyGoalData: Codable {
+    let dailyGoal: Int
+    let todayMinutes: Int
+    let streakDays: Int
+    let lastUpdated: Date
+    
+    var isAchieved: Bool {
+        todayMinutes >= dailyGoal
+    }
+}
+
+// MARK: - データ共有マネージャー
+
+class WidgetDataManager {
+    static let shared = WidgetDataManager()
+    private let userDefaults = UserDefaults(suiteName: "group.Kasahara-Takuma.Studies")
+    private let widgetDataKey = "StudyGoalWidgetData"
+    
+    private init() {}
+    
+    func saveWidgetData(_ widgetData: WidgetStudyGoalData) {
+        print("🔄 Saving widget data...")
+        print("🔄 App Groups ID: group.Kasahara-Takuma.Studies")
+        print("🔄 Data: \(widgetData)")
+        
+        guard let userDefaults = userDefaults else {
+            print("❌ Failed to initialize UserDefaults with App Groups")
+            return
+        }
+        
+        do {
+            let encodedData = try JSONEncoder().encode(widgetData)
+            userDefaults.set(encodedData, forKey: widgetDataKey)
+            userDefaults.synchronize() // 強制同期
+            print("✅ Widget data saved successfully")
+        } catch {
+            print("❌ Failed to save widget  \(error)")
+        }
+    }
+    
+    func loadWidgetData() -> WidgetStudyGoalData? {
+        print("🔍 Loading widget data...")
+        print("🔍 App Groups ID: group.Kasahara-Takuma.Studies")
+        
+        guard let userDefaults = userDefaults else {
+            print("❌ Failed to initialize UserDefaults with App Groups")
+            return nil
+        }
+        
+        guard let savedData = userDefaults.data(forKey: widgetDataKey) else {
+            print("⚠️ No data found for key: \(widgetDataKey)")
+            return nil
+        }
+        
+        do {
+            let decodedData = try JSONDecoder().decode(WidgetStudyGoalData.self, from: savedData)
+            print("✅ Widget data loaded successfully: \(decodedData)")
+            return decodedData
+        } catch {
+            print("❌ Failed to load widget  \(error)")
+            return nil
+        }
+    }
+    
+    // デバッグ用メソッド
+    func testConnection() -> Bool {
+        print("🧪 Testing App Groups connection...")
+        
+        guard let userDefaults = userDefaults else {
+            print("❌ UserDefaults initialization failed")
+            return false
+        }
+        
+        let testKey = "test_connection"
+        let testValue = "connection_success_\(Date().timeIntervalSince1970)"
+        
+        userDefaults.set(testValue, forKey: testKey)
+        userDefaults.synchronize()
+        
+        let retrievedValue = userDefaults.string(forKey: testKey)
+        let isSuccess = retrievedValue == testValue
+        
+        print("🧪 Test result: \(isSuccess ? "SUCCESS" : "FAILED")")
+        print("🧪 Sent: \(testValue)")
+        print("🧪 Retrieved: \(retrievedValue ?? "nil")")
+        
+        userDefaults.removeObject(forKey: testKey)
+        return isSuccess
+    }
+    
+    func clearWidgetData() {
+        print("🧹 Clearing widget data...")
+        
+        guard let userDefaults = userDefaults else {
+            print("❌ Failed to initialize UserDefaults")
+            return
+        }
+        
+        userDefaults.removeObject(forKey: widgetDataKey)
+        userDefaults.synchronize()
+        print("✅ Widget data cleared")
+    }
+    
+    func debugAllData() {
+        print("🔍 Debug: All App Groups data...")
+        
+        guard let userDefaults = userDefaults else {
+            print("❌ UserDefaults not available")
+            return
+        }
+        
+        let allKeys = userDefaults.dictionaryRepresentation().keys
+        print("🔍 Available keys in App Groups: \(Array(allKeys))")
+        
+        for key in allKeys {
+            let value = userDefaults.object(forKey: key)
+            print("🔍 Key: \(key), Value type: \(type(of: value))")
+        }
+    }
+}

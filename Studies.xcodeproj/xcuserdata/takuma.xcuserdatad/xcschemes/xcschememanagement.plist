@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>SchemeUserState</key>
+	<dict>
+		<key>LiveActivityExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+		<key>Studies.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>0</integer>
+		</dict>
+		<key>StudiesLiveActivityExtension.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>2</integer>
+		</dict>
+		<key>StudiesWatch Watch App.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>F1AC866E2E459BBB00D93650</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1AC867D2E459BBE00D93650</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1AC86872E459BBE00D93650</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1AC871D2E462A0600D93650</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1B98FDA2E598E290095A75A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1B98FE62E598E2C0095A75A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>F1B98FF02E598E2C0095A75A</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+	</dict>
+</dict>
+</plist>

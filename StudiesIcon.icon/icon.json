@@ -1,0 +1,49 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "extended-gray:0.75000,1.00000",
+      "srgb:1.00000,1.00000,1.00000,1.00000"
+    ]
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "blend-mode" : "multiply",
+          "fill" : "automatic",
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "名称未設定のアートワーク-3.png",
+          "name" : "名称未設定のアートワーク-3"
+        },
+        {
+          "blend-mode" : "multiply",
+          "image-name" : "名称未設定のアートワーク-2.png",
+          "name" : "名称未設定のアートワーク-2"
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : "automatic",
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "名称未設定のアートワーク-1.png",
+          "name" : "名称未設定のアートワーク-1"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
