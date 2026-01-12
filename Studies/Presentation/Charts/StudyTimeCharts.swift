@@ -17,6 +17,7 @@ struct StudyTimeCharts: View {
     @State private var isScrollingToToday = false
     @State private var scrollProgress: Double = 0
     @State private var buttonPressed = false
+    @State private var selectedDate: Date? = nil
     
     init() {
         let now = Date()
@@ -355,6 +356,12 @@ struct StudyTimeCharts: View {
                 }
             }
         }
+        .chartXSelection(value: $selectedDate)
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                chartSelectionOverlay(proxy: proxy, geometry: geo)
+            }
+        }
     }
     
     // MARK: - データ読み込み（全データ一括読み込み）
@@ -429,6 +436,112 @@ struct StudyTimeCharts: View {
                 let idealScrollPos = calendar.date(byAdding: .month, value: -11, to: latestMonthStart) ?? latestMonthStart
                 scrollPos = idealScrollPos
             }
+        }
+    }
+    
+    // MARK: - Selection Helpers & Overlay
+    private func normalizedBucketDate(for date: Date) -> Date {
+        let calendar = Calendar.current
+        switch span {
+        case .sevenDays, .thirtyDays:
+            return calendar.startOfDay(for: date)
+        case .twelveMonths:
+            return calendar.date(from: calendar.dateComponents([.year, .month], from: date))!
+        }
+    }
+    
+    private func tooltipTitle(for bucketDate: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        switch span {
+        case .sevenDays, .thirtyDays:
+            formatter.dateFormat = "yyyy年M月d日(E)"
+            return formatter.string(from: bucketDate)
+        case .twelveMonths:
+            formatter.dateFormat = "yyyy年M月"
+            return formatter.string(from: bucketDate)
+        }
+    }
+    
+    @ViewBuilder
+    private func chartSelectionOverlay(proxy: ChartProxy, geometry: GeometryProxy) -> some View {
+        if let selectedDate = selectedDate {
+            let bucketDate = normalizedBucketDate(for: selectedDate)
+            let plotAnchor = proxy.plotAreaFrame
+            let plotRect = geometry[plotAnchor]
+            if let positionX = proxy.position(forX: bucketDate) {
+                let lineX = positionX + plotRect.origin.x
+                let tooltipWidth: CGFloat = 180
+                let placeRight = lineX + 8 + tooltipWidth < geometry.size.width
+                let tooltipLeftX = max(8, min(geometry.size.width - tooltipWidth - 8, placeRight ? lineX + 8 : lineX - tooltipWidth - 8))
+                let tooltipTopY = plotRect.origin.y + 8
+
+                let bucketRows = rows.filter { $0.bucketDate == bucketDate }
+                let totalMinutes = bucketRows.reduce(0.0) { $0 + $1.durationMinutes }
+                let sortedRows = bucketRows.sorted { $0.durationMinutes > $1.durationMinutes }
+
+                ZStack(alignment: .topLeading) {
+                    // Vertical guide line
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.5))
+                        .frame(width: 1, height: plotRect.height)
+                        .position(x: lineX, y: plotRect.origin.y + plotRect.height / 2)
+
+                    // Tooltip
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(tooltipTitle(for: bucketDate))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text("合計")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(formatMinutesToHourMinute(totalMinutes))
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                        }
+                        if !sortedRows.isEmpty {
+                            Divider().opacity(0.6)
+                            ForEach(Array(sortedRows.prefix(5).enumerated()), id: \.offset) { _, item in
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(item.subjectColor)
+                                        .frame(width: 6, height: 6)
+                                    Text(item.subjectName)
+                                        .font(.caption2)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text(formatMinutesToHourMinute(item.durationMinutes))
+                                        .font(.caption2)
+                                }
+                            }
+                            if sortedRows.count > 5 {
+                                Text("他 \(sortedRows.count - 5) 件")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Text("記録なし")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(8)
+                    .frame(width: tooltipWidth)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+                    .position(x: tooltipLeftX + tooltipWidth / 2, y: tooltipTopY)
+                }
+            } else {
+                Color.clear
+            }
+        } else {
+            Color.clear
         }
     }
     
