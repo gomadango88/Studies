@@ -740,27 +740,26 @@ struct ScheduleEditorView: View {
 
                 
                 Section(
-                    header: HStack {
-                        Text("教材別目標（オプション）")
-                        Spacer()
-                        Button("追加") {
-                            showingSubjectGoalEditor = true
-                        }
-                        .font(.caption)
-                    },
+                    header: Text("教材別目標（オプション）"),
                     footer: Text("特定の教材に重点を置きたい場合に設定します")
                 ) {
-                    if subjectGoals.isEmpty {
-                        Text("教材別目標は設定されていません")
-                            .foregroundColor(.secondary)
-                            .font(.subheadline)
-                    } else {
-                        ForEach(subjectGoals.indices, id: \.self) { index in
-                            SubjectGoalRow(subjectGoal: subjectGoals[index]) {
-                                subjectGoals.remove(at: index)
-                            }
+                    ForEach(subjectGoals.indices, id: \.self) { index in
+                        SubjectGoalRow(subjectGoal: subjectGoals[index]) {
+                            subjectGoals.remove(at: index)
                         }
                     }
+                    
+                    Button(action: { showingSubjectGoalEditor = true }) {
+                        Label {
+                            Text("教材別目標を追加")
+                                .font(.body)
+                                .foregroundColor(.primary)
+                        } icon: {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.green)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .navigationTitle(schedule == nil ? "新しいスケジュール" : "スケジュールを編集")
