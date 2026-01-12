@@ -18,6 +18,7 @@ struct StudyTimeCharts: View {
     @State private var scrollProgress: Double = 0
     @State private var buttonPressed = false
     @State private var selectedDate: Date? = nil
+    @State private var lastHapticBucketDate: Date? = nil
     
     init() {
         let now = Date()
@@ -327,12 +328,14 @@ struct StudyTimeCharts: View {
     
     @ViewBuilder
     private func createChart() -> some View {
+        let selectedBucketDate = selectedDate.map { normalizedBucketDate(for: $0) }
         Chart(rows) { row in
             BarMark(
                 x: .value("Period", row.bucketDate, unit: span.xUnit),
                 y: .value("Minutes", row.durationMinutes)
             )
             .foregroundStyle(row.subjectColor)
+            .opacity(selectedBucketDate == nil || row.bucketDate == selectedBucketDate! ? 1.0 : 0.25)
         }
         .chartScrollableAxes(.horizontal)
         .chartScrollTargetBehavior(
@@ -360,6 +363,17 @@ struct StudyTimeCharts: View {
         .chartOverlay { proxy in
             GeometryReader { geo in
                 chartSelectionOverlay(proxy: proxy, geometry: geo)
+            }
+        }
+        .onChange(of: selectedDate) { newValue in
+            if let newValue {
+                let bucket = normalizedBucketDate(for: newValue)
+                if lastHapticBucketDate != bucket {
+                    HapticFeedback.light()
+                    lastHapticBucketDate = bucket
+                }
+            } else {
+                lastHapticBucketDate = nil
             }
         }
     }
