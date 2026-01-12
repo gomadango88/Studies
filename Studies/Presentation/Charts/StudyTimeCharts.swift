@@ -39,14 +39,16 @@ struct StudyTimeCharts: View {
     
     var dateRangeString: String {
         let calendar = Calendar.current
+        let (rangeStart, rangeEnd) = alignedVisibleRange()
         switch span {
         case .sevenDays, .thirtyDays:
-            let startYear = calendar.component(.year, from: scrollPos)
-            let startMonth = calendar.component(.month, from: scrollPos)
-            let startDay = calendar.component(.day, from: scrollPos)
-            let endYear = calendar.component(.year, from: scrollPositionEnd)
-            let endMonth = calendar.component(.month, from: scrollPositionEnd)
-            let endDay = calendar.component(.day, from: scrollPositionEnd)
+            let endDisplay = calendar.date(byAdding: .day, value: -1, to: rangeEnd) ?? rangeEnd
+            let startYear = calendar.component(.year, from: rangeStart)
+            let startMonth = calendar.component(.month, from: rangeStart)
+            let startDay = calendar.component(.day, from: rangeStart)
+            let endYear = calendar.component(.year, from: endDisplay)
+            let endMonth = calendar.component(.month, from: endDisplay)
+            let endDay = calendar.component(.day, from: endDisplay)
             
             if startYear == endYear && startMonth == endMonth {
                 return "\(startYear)年\(startMonth)月\(startDay)日〜\(endDay)日"
@@ -57,10 +59,11 @@ struct StudyTimeCharts: View {
             }
             
         case .twelveMonths:
-            let startYear = calendar.component(.year, from: scrollPos)
-            let startMonth = calendar.component(.month, from: scrollPos)
-            let endYear = calendar.component(.year, from: scrollPositionEnd)
-            let endMonth = calendar.component(.month, from: scrollPositionEnd)
+            let endDisplay = calendar.date(byAdding: .month, value: -1, to: rangeEnd) ?? rangeEnd
+            let startYear = calendar.component(.year, from: rangeStart)
+            let startMonth = calendar.component(.month, from: rangeStart)
+            let endYear = calendar.component(.year, from: endDisplay)
+            let endMonth = calendar.component(.month, from: endDisplay)
             
             if startYear == endYear {
                 return "\(startYear)年"
@@ -72,86 +75,50 @@ struct StudyTimeCharts: View {
     
     var averageStudyTimeInVisibleRange: Double {
         let calendar = Calendar.current
-        // 年表示の場合は月境界で範囲を調整
-        let (rangeStart, rangeEnd) = {
+        let (rangeStart, rangeEnd) = alignedVisibleRange()
+        
+        // 表示範囲内のすべてのバケット（日または月）を生成
+        var allBuckets: [Date] = []
+        var current = rangeStart
+        while current < rangeEnd {
+            allBuckets.append(current)
             switch span {
             case .sevenDays, .thirtyDays:
-                return (scrollPos, scrollPositionEnd)
+                current = calendar.date(byAdding: .day, value: 1, to: current)!
             case .twelveMonths:
-                // 月初から月初の範囲で比較
-                let scrollMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
-                let endMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPositionEnd))!
-                let actualEnd = calendar.date(byAdding: .month, value: 1, to: endMonthStart) ?? endMonthStart
-                return (scrollMonthStart, actualEnd)
-            }
-        }()
-        
-        // 表示範囲内のすべての日付を生成
-        var allDatesInRange: [Date] = []
-        var currentDate = calendar.startOfDay(for: rangeStart)
-        let endDate = calendar.startOfDay(for: rangeEnd)
-        
-        while currentDate < endDate {
-            allDatesInRange.append(currentDate)
-            switch span {
-            case .sevenDays, .thirtyDays:
-                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
-            case .twelveMonths:
-                // 月表示の場合は月単位で進める
-                currentDate = calendar.date(byAdding: .month, value: 1, to: currentDate)!
+                current = calendar.date(byAdding: .month, value: 1, to: current)!
             }
         }
         
-        guard !allDatesInRange.isEmpty else {
-            return 0
-        }
+        guard !allBuckets.isEmpty else { return 0 }
         
-        // 学習記録がある日の時間を集計
+        // 表示範囲の行のみ集計
         let visibleRows = rows.filter { row in
             row.bucketDate >= rangeStart && row.bucketDate < rangeEnd
         }
         
-        let dailyTotals = Dictionary(grouping: visibleRows, by: { $0.bucketDate })
-            .mapValues { dayRows in
-                dayRows.reduce(0) { $0 + $1.durationMinutes }
+        let totalsByBucket = Dictionary(grouping: visibleRows, by: { $0.bucketDate })
+            .mapValues { bucketRows in
+                bucketRows.reduce(0) { $0 + $1.durationMinutes }
             }
         
-        // すべての日の学習時間を計算（0分の日も含む）
-        let totalMinutes = allDatesInRange.reduce(0.0) { total, date in
-            let dayMinutes = dailyTotals[date] ?? 0.0 // 記録がない日は0分
-            return total + dayMinutes
+        // 0分のバケットも含めて平均を計算
+        let totalMinutes = allBuckets.reduce(0.0) { total, date in
+            total + (totalsByBucket[date] ?? 0.0)
         }
         
-        // すべての日数で割って平均を計算
-        let average = totalMinutes / Double(allDatesInRange.count)
-        return average
+        return totalMinutes / Double(allBuckets.count)
     }
     
     // 表示範囲の合計学習時間
     var totalStudyTimeInVisibleRange: Double {
-        let calendar = Calendar.current
-        // 年表示の場合は月境界で範囲を調整
-        let (rangeStart, rangeEnd) = {
-            switch span {
-            case .sevenDays, .thirtyDays:
-                return (scrollPos, scrollPositionEnd)
-            case .twelveMonths:
-                // 月初から月初の範囲で比較
-                let scrollMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
-                let endMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPositionEnd))!
-                let actualEnd = calendar.date(byAdding: .month, value: 1, to: endMonthStart) ?? endMonthStart
-                return (scrollMonthStart, actualEnd)
-            }
-        }()
+        let (rangeStart, rangeEnd) = alignedVisibleRange()
         
-        // 学習記録がある日の時間を集計
         let visibleRows = rows.filter { row in
             row.bucketDate >= rangeStart && row.bucketDate < rangeEnd
         }
         
-        // 合計時間を計算
-        let totalMinutes = visibleRows.reduce(0.0) { $0 + $1.durationMinutes }
-        return totalMinutes
+        return visibleRows.reduce(0.0) { $0 + $1.durationMinutes }
     }
     
     // 「今日」ボタンの表示判定
@@ -204,6 +171,25 @@ struct StudyTimeCharts: View {
             let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
             let idealPos = calendar.date(byAdding: .month, value: -11, to: currentMonthStart) ?? currentMonthStart
             return idealPos
+        }
+    }
+    
+    // 可視範囲を日・月境界に揃えて取得（終了は排他的）
+    private func alignedVisibleRange() -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        switch span {
+        case .sevenDays:
+            let start = calendar.startOfDay(for: scrollPos)
+            let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
+            return (start, end)
+        case .thirtyDays:
+            let start = calendar.startOfDay(for: scrollPos)
+            let end = calendar.date(byAdding: .day, value: 30, to: start) ?? start
+            return (start, end)
+        case .twelveMonths:
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let end = calendar.date(byAdding: .month, value: 12, to: start) ?? start
+            return (start, end)
         }
     }
     
