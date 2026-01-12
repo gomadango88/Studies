@@ -495,11 +495,6 @@ struct StudyTimeCharts: View {
                 let sortedRows = bucketRows.sorted { $0.durationMinutes > $1.durationMinutes }
 
                 ZStack(alignment: .topLeading) {
-                    // Vertical guide line
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.5))
-                        .frame(width: 1, height: plotRect.height)
-                        .position(x: lineX, y: plotRect.origin.y + plotRect.height / 2)
 
                     // Tooltip
                     VStack(alignment: .leading, spacing: 6) {
