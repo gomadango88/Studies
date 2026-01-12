@@ -36,12 +36,12 @@ class DIContainer {
             
             do {
                 _modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
-                print("🗃️ ModelContainer created successfully")
+                print("ModelContainer created successfully")
             } catch {
                 
                 let fallbackSchema = Schema([])
                 _modelContainer = try! ModelContainer(for: fallbackSchema)
-                print("🗃️ ModelContainer initialization failed: \(error)")
+                print("ModelContainer initialization failed: \(error)")
             }
         }
         return _modelContainer!
@@ -84,3 +84,4 @@ class DIContainer {
         return _studyRecordUseCase!
     }
 }
+

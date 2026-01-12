@@ -217,7 +217,7 @@ struct RestoreView: View {
             await MainActor.run {
                 restoreStatus = .failed("ファイルへのアクセス権限を取得できませんでした")
             }
-            print("📥 セキュリティスコープアクセス失敗")
+            print("セキュリティスコープアクセス失敗")
             return
         }
         
@@ -240,13 +240,13 @@ struct RestoreView: View {
             
             let activeCount = backup.studyRecords.filter { !$0.isArchived }.count
             let archivedCount = backup.studyRecords.filter { $0.isArchived }.count
-            print("📥 バックアップファイルの読み込み完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
+            print("バックアップファイルの読み込み完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
             
         } catch {
             await MainActor.run {
                 restoreStatus = .failed("ファイル解析エラー: \(error.localizedDescription)")
             }
-            print("📥 バックアップファイル読み込みエラー: \(error)")
+            print("バックアップファイル読み込みエラー: \(error)")
         }
     }
     
@@ -297,13 +297,13 @@ struct RestoreView: View {
             
             let activeCount = backup.studyRecords.filter { !$0.isArchived }.count
             let archivedCount = backup.studyRecords.filter { $0.isArchived }.count
-            print("📥 データ復元完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
+            print("データ復元完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
             
         } catch {
             await MainActor.run {
                 restoreStatus = .failed("復元エラー: \(error.localizedDescription)")
             }
-            print("📥 データ復元エラー: \(error)")
+            print("データ復元エラー: \(error)")
         }
     }
     

@@ -24,16 +24,16 @@ class SubjectRepository: SubjectRepositoryProtocol {
         
         let models = try context.fetch(descriptor)
         
-        // 🔥 修正: isPinnedプロパティが存在するのでエラーなし
-        print("📊 Repository fetchAll: Found \(models.count) models")
+        // isPinnedプロパティが存在する
+        print("Repository fetchAll: Found \(models.count) models")
         
         let subjects = models.map { model in
-            print("📊 Model: \(model.name), isPinned: \(model.isPinned)")
+            print("Model: \(model.name), isPinned: \(model.isPinned)")
             return model.toDomainEntity()
         }
         
         let pinnedCount = subjects.filter { $0.isPinned }.count
-        print("📊 Repository fetchAll: Mapped \(subjects.count) subjects, \(pinnedCount) pinned")
+        print("Repository fetchAll: Mapped \(subjects.count) subjects, \(pinnedCount) pinned")
         
         return subjects
     }
@@ -42,7 +42,7 @@ class SubjectRepository: SubjectRepositoryProtocol {
         let context = modelContainer.mainContext
         let model = SubjectModel.fromDomainEntity(subject)
         
-        print("📊 Repository save: \(subject.name), isPinned: \(subject.isPinned)")
+        print("Repository save: \(subject.name), isPinned: \(subject.isPinned)")
         
         context.insert(model)
         try context.save()
@@ -60,18 +60,18 @@ class SubjectRepository: SubjectRepositoryProtocol {
         
         let models = try context.fetch(descriptor)
         if let model = models.first {
-            print("📊 Repository update: \(subject.name), isPinned: \(subject.isPinned)")
+            print("Repository update: \(subject.name), isPinned: \(subject.isPinned)")
             
             model.name = subject.name
             model.color = subject.color
             model.sortOrder = subject.sortOrder
-            model.isPinned = subject.isPinned  // 🔥 修正: エラーが解消される
+            model.isPinned = subject.isPinned  // エラーが解消される
             
             try context.save()
             
-            print("📊 Repository update completed for: \(subject.name)")
+            print("Repository update completed for: \(subject.name)")
         } else {
-            print("❌ Repository update: Subject not found with id: \(subjectId)")
+            print("Repository update: Subject not found with id: \(subjectId)")
         }
     }
     
@@ -107,10 +107,11 @@ class SubjectRepository: SubjectRepositoryProtocol {
             let models = try context.fetch(descriptor)
             if let model = models.first {
                 model.sortOrder = subject.sortOrder
-                model.isPinned = subject.isPinned  // 🔥 修正: エラーが解消される
+                model.isPinned = subject.isPinned  // エラーが解消される
             }
         }
         
         try context.save()
     }
 }
+

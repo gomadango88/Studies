@@ -33,7 +33,7 @@ struct LiveActivityState: Codable {
 class LiveActivitySessionManager {
     static let shared = LiveActivitySessionManager()
     
-    // 🔥 修正：プロパティ名を変更してエラーを回避
+    // プロパティ名を変更してエラーを回避
     @ObservationIgnored @AppStorage("liveActivitySession")
     private var liveActivitySessionData: Data?
     
@@ -50,25 +50,25 @@ class LiveActivitySessionManager {
         
         if let encoded = try? JSONEncoder().encode(state) {
             liveActivitySessionData = encoded
-            print("✅ Live Activity state saved")
+            print("Live Activity state saved")
         } else {
-            print("❌ Failed to save Live Activity state")
+            print("Failed to save Live Activity state")
         }
     }
     
     func getLiveActivityState() -> LiveActivityState? {
         guard let data = liveActivitySessionData,
               let state = try? JSONDecoder().decode(LiveActivityState.self, from: data) else {
-            print("📭 No Live Activity state found")
+            print("No Live Activity state found")
             return nil
         }
         
-        print("📋 Found Live Activity state: \(state.subjectName)")
+        print("Found Live Activity state: \(state.subjectName)")
         return state
     }
     
     func clearLiveActivityState() {
-        print("🗑️ Clearing Live Activity state")
+        print("Clearing Live Activity state")
         liveActivitySessionData = nil
     }
     

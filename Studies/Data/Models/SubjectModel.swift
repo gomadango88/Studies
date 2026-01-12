@@ -18,7 +18,7 @@ final class SubjectModel {
     var colorBlue: Double
     var colorAlpha: Double
     var sortOrder: Int
-    var isPinned: Bool = false  // 🔥 追加: ピン留めプロパティ
+    var isPinned: Bool = false  // ピン留めプロパティ
     var createdAt: Date
     
     // SwiftDataの関係性
@@ -30,7 +30,7 @@ final class SubjectModel {
         name: String,
         color: Color,
         sortOrder: Int = 0,
-        isPinned: Bool = false,  // 🔥 追加: ピン留めパラメータ
+        isPinned: Bool = false,  // ピン留めパラメータ
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -49,7 +49,7 @@ final class SubjectModel {
         self.colorBlue = Double(blue)
         self.colorAlpha = Double(alpha)
         self.sortOrder = sortOrder
-        self.isPinned = isPinned  // 🔥 追加: ピン留め状態を設定
+        self.isPinned = isPinned  // ピン留め状態を設定
         self.createdAt = createdAt
     }
     
@@ -78,26 +78,26 @@ final class SubjectModel {
         }
     }
     
-    // 🔥 修正: isPinnedを含めたDomain層のSubjectエンティティに変換
+    // isPinnedを含めたDomain層のSubjectエンティティに変換
     func toDomainEntity() -> Subject {
         Subject(
             id: id,
             name: name,
             color: color,
             sortOrder: sortOrder,
-            isPinned: isPinned,  // 🔥 追加: ピン留め状態を含める
+            isPinned: isPinned,  // ピン留め状態を含める
             createdAt: createdAt
         )
     }
     
-    // 🔥 修正: isPinnedを含めたDomain層のSubjectエンティティから作成
+    // isPinnedを含めたDomain層のSubjectエンティティから作成
     static func fromDomainEntity(_ subject: Subject) -> SubjectModel {
         SubjectModel(
             id: subject.id,
             name: subject.name,
             color: subject.color,
             sortOrder: subject.sortOrder,
-            isPinned: subject.isPinned,  // 🔥 追加: ピン留め状態を含める
+            isPinned: subject.isPinned,  // ピン留め状態を含める
             createdAt: subject.createdAt
         )
     }

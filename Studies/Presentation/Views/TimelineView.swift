@@ -50,7 +50,7 @@ struct TimelineView: View {
                     Task {
                         await viewModel.deleteRecord(record)
                         
-                        // 🔥 追加: ウィジェット更新
+                        // 🔥 変更: ウィジェット更新は集中サービス経由
                         await updateWidgetAfterDeletion()
                         
                         // 削除成功時の触覚フィードバック
@@ -70,91 +70,8 @@ struct TimelineView: View {
     
     // MARK: - ウィジェット更新メソッド
     private func updateWidgetAfterDeletion() async {
-        print("📱 Updating widget after timeline record deletion...")
-        
-        do {
-            // 🔥 全教材の今日の合計時間を計算
-            let totalTodayMinutes = await calculateTotalTodayMinutes()
-            
-            // 🔥 実際のスケジュール目標を取得
-            let actualDailyGoal = await getActualDailyGoalMinutes()
-            
-            // 🔥 実際の連続日数を取得
-            let actualStreakDays = await getActualStreakDays()
-            
-            let widgetData = WidgetStudyGoalData(
-                dailyGoal: actualDailyGoal,
-                todayMinutes: totalTodayMinutes,
-                streakDays: actualStreakDays,
-                lastUpdated: Date()
-            )
-            
-            print("📱 Widget data after deletion: \(widgetData)")
-            WidgetDataManager.shared.saveWidgetData(widgetData)
-            
-            // ウィジェット更新をリクエスト
-            WidgetCenter.shared.reloadAllTimelines()
-            
-            print("✅ Widget updated after deletion - Today: \(totalTodayMinutes)min, Goal: \(actualDailyGoal)min")
-            
-        } catch {
-            print("❌ Error updating widget after deletion: \(error)")
-        }
-    }
-
-    // 🔥 全教材の今日の合計時間を計算（修正版）
-    private func calculateTotalTodayMinutes() async -> Int {
-        // 🔥 修正: guard let を削除して直接使用
-        let studyRecordUseCase = diContainer.studyRecordUseCase
-        
-        do {
-            let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await studyRecordUseCase.getRecordsForDate(today)
-            
-            let totalSeconds = allRecords.reduce(0) { $0 + $1.duration }
-            let totalMinutes = Int(totalSeconds / 60)
-            
-            print("✅ Calculated total today minutes: \(totalMinutes) from \(allRecords.count) records")
-            return totalMinutes
-            
-        } catch {
-            print("❌ Error calculating total today minutes: \(error)")
-            return 0
-        }
-    }
-
-    // 🔥 実際のスケジュール目標を取得（修正版）
-    private func getActualDailyGoalMinutes() async -> Int {
-        do {
-            let scheduleViewModel = ScheduleViewModel(container: diContainer)
-            await scheduleViewModel.loadData()
-            
-            if let todaySchedule = scheduleViewModel.getTodayActiveSchedule() {
-                print("✅ Found active schedule with daily goal: \(todaySchedule.dailyGoalMinutes) minutes")
-                return todaySchedule.dailyGoalMinutes
-            } else {
-                print("⚠️ No active schedule found, using default goal")
-                return 0
-            }
-        } catch {
-            print("❌ Error getting schedule  \(error)")
-            return 0
-        }
-    }
-
-    // 🔥 実際の連続日数を取得（修正版）
-    private func getActualStreakDays() async -> Int {
-        // 🔥 修正: guard let を削除して直接使用
-        let studyRecordUseCase = diContainer.studyRecordUseCase
-        
-        do {
-            let streakDays = try await studyRecordUseCase.getOverallConsecutiveStudyDays()
-            print("✅ Actual streak days: \(streakDays)")
-            return streakDays
-        } catch {
-            print("❌ Error getting streak days: \(error)")
-            return 0
-        }
+        print("📱 Updating widget after timeline record deletion via WidgetUpdateService...")
+        await WidgetUpdateService.update(using: diContainer)
     }
 
     

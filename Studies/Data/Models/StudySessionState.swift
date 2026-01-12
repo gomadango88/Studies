@@ -35,14 +35,14 @@ struct StudySessionState: Codable {
 class StudySessionManager {
     static let shared = StudySessionManager()
     
-    // 🔥 修正：@ObservationIgnoredを追加してエラーを解決
+    // @ObservationIgnoredを追加してエラーを解決
     @ObservationIgnored @AppStorage("activeStudySession")
     private var activeStudySessionData: Data?
     
     private init() {}
     
     func saveActiveSession(subject: Subject, stopwatchManager: EfficientStopwatchManager) {
-        print("💾 Saving active study session for: \(subject.name)")
+        print("Saving active study session for: \(subject.name)")
         
         let colorHex = "#0066CC" // 簡易色
         
@@ -58,25 +58,25 @@ class StudySessionManager {
         
         if let encoded = try? JSONEncoder().encode(state) {
             activeStudySessionData = encoded
-            print("✅ Study session state saved")
+            print("Study session state saved")
         } else {
-            print("❌ Failed to encode study session state")
+            print("Failed to encode study session state")
         }
     }
     
     func getActiveSession() -> StudySessionState? {
         guard let data = activeStudySessionData,
               let state = try? JSONDecoder().decode(StudySessionState.self, from: data) else {
-            print("📭 No active study session found")
+            print("No active study session found")
             return nil
         }
         
-        print("📋 Found active study session: \(state.subjectName)")
+        print("Found active study session: \(state.subjectName)")
         return state
     }
     
     func clearActiveSession() {
-        print("🗑️ Clearing active study session")
+        print("Clearing active study session")
         activeStudySessionData = nil
     }
     
@@ -84,3 +84,4 @@ class StudySessionManager {
         return activeStudySessionData != nil
     }
 }
+

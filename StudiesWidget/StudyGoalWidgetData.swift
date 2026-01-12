@@ -32,12 +32,8 @@ class WidgetDataManager {
     private init() {}
     
     func saveWidgetData(_ widgetData: WidgetStudyGoalData) {
-        print("🔄 Saving widget data...")
-        print("🔄 App Groups ID: group.Kasahara-Takuma.Studies")
-        print("🔄 Data: \(widgetData)")
-        
         guard let userDefaults = userDefaults else {
-            print("❌ Failed to initialize UserDefaults with App Groups")
+            print("Failed to initialize UserDefaults with App Groups")
             return
         }
         
@@ -45,42 +41,38 @@ class WidgetDataManager {
             let encodedData = try JSONEncoder().encode(widgetData)
             userDefaults.set(encodedData, forKey: widgetDataKey)
             userDefaults.synchronize() // 強制同期
-            print("✅ Widget data saved successfully")
+            print("Widget data saved successfully")
         } catch {
-            print("❌ Failed to save widget  \(error)")
+            print("Failed to save widget data: \(error)")
         }
     }
     
     func loadWidgetData() -> WidgetStudyGoalData? {
-        print("🔍 Loading widget data...")
-        print("🔍 App Groups ID: group.Kasahara-Takuma.Studies")
-        
         guard let userDefaults = userDefaults else {
-            print("❌ Failed to initialize UserDefaults with App Groups")
+            print("Failed to initialize UserDefaults with App Groups")
             return nil
         }
         
         guard let savedData = userDefaults.data(forKey: widgetDataKey) else {
-            print("⚠️ No data found for key: \(widgetDataKey)")
+            print("No data found for key: \(widgetDataKey)")
             return nil
         }
         
         do {
             let decodedData = try JSONDecoder().decode(WidgetStudyGoalData.self, from: savedData)
-            print("✅ Widget data loaded successfully: \(decodedData)")
             return decodedData
         } catch {
-            print("❌ Failed to load widget  \(error)")
+            print("Failed to load widget data: \(error)")
             return nil
         }
     }
     
     // デバッグ用メソッド
     func testConnection() -> Bool {
-        print("🧪 Testing App Groups connection...")
+        print("Testing App Groups connection...")
         
         guard let userDefaults = userDefaults else {
-            print("❌ UserDefaults initialization failed")
+            print("UserDefaults initialization failed")
             return false
         }
         
@@ -93,41 +85,42 @@ class WidgetDataManager {
         let retrievedValue = userDefaults.string(forKey: testKey)
         let isSuccess = retrievedValue == testValue
         
-        print("🧪 Test result: \(isSuccess ? "SUCCESS" : "FAILED")")
-        print("🧪 Sent: \(testValue)")
-        print("🧪 Retrieved: \(retrievedValue ?? "nil")")
+        print("Test result: \(isSuccess ? "SUCCESS" : "FAILED")")
+        print("Sent: \(testValue)")
+        print("Retrieved: \(retrievedValue ?? "nil")")
         
         userDefaults.removeObject(forKey: testKey)
         return isSuccess
     }
     
     func clearWidgetData() {
-        print("🧹 Clearing widget data...")
+        print("Clearing widget data...")
         
         guard let userDefaults = userDefaults else {
-            print("❌ Failed to initialize UserDefaults")
+            print("Failed to initialize UserDefaults")
             return
         }
         
         userDefaults.removeObject(forKey: widgetDataKey)
         userDefaults.synchronize()
-        print("✅ Widget data cleared")
+        print("Widget data cleared")
     }
     
     func debugAllData() {
-        print("🔍 Debug: All App Groups data...")
+        print("Debug: All App Groups data...")
         
         guard let userDefaults = userDefaults else {
-            print("❌ UserDefaults not available")
+            print("UserDefaults not available")
             return
         }
         
         let allKeys = userDefaults.dictionaryRepresentation().keys
-        print("🔍 Available keys in App Groups: \(Array(allKeys))")
+        print("Available keys in App Groups: \(Array(allKeys))")
         
         for key in allKeys {
             let value = userDefaults.object(forKey: key)
-            print("🔍 Key: \(key), Value type: \(type(of: value))")
+            print("Key: \(key), Value type: \(type(of: value))")
         }
     }
 }
+

@@ -12,7 +12,7 @@ struct StudiesLiveActivityLiveActivity: Widget {
             LockScreenLiveActivityView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
-                // 🔥 修正: 適切な余白を追加
+                // 適切な余白を追加
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         RoundedRectangle(cornerRadius: 3)
@@ -32,7 +32,7 @@ struct StudiesLiveActivityLiveActivity: Widget {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding(.leading, 8) // 🔥 左側の余白
+                    .padding(.leading, 8) // 左側の余白
                     .padding(.vertical, 4)
                 }
                 
@@ -43,13 +43,13 @@ struct StudiesLiveActivityLiveActivity: Widget {
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
                         
-                        // 🔥 修正: 実際のデータを使用
+                        // 実際のデータを使用
                         Text(context.state.todayTotalTime)
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .monospacedDigit()
                             .foregroundColor(.primary)
                     }
-                    .padding(.trailing, 8) // 🔥 右側の余白
+                    .padding(.trailing, 8) // 右側の余白
                     .padding(.vertical, 4)
                 }
                 
@@ -74,7 +74,7 @@ struct StudiesLiveActivityLiveActivity: Widget {
                     .padding(.vertical, 4)
                 }
                 
-                // 🔥 修正: bottomセクションを削除（プログレスバー不要）
+                // bottomセクションを削除（プログレスバー不要）
                 
             } compactLeading: {
                 Circle()
@@ -180,6 +180,7 @@ extension Color {
         elapsedTime: 1234,
         isRunning: true,
         lastUpdateTime: Date(),
-        todayTotalTime: "2:30:15" // 🔥 追加: プレビュー用のサンプル値
+        todayTotalTime: "2:30:15" // プレビュー用のサンプル値
     )
 }
+

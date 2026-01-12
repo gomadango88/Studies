@@ -156,10 +156,10 @@ struct BackupView: View {
             switch result {
             case .success(let url):
                 backupStatus = .completed
-                print("📤 バックアップファイルのエクスポート完了: \(url)")
+                print("バックアップファイルのエクスポート完了: \(url)")
             case .failure(let error):
                 backupStatus = .failed("エクスポートエラー: \(error.localizedDescription)")
-                print("📤 バックアップエラー: \(error)")
+                print("バックアップエラー: \(error)")
             }
         }
     }
@@ -191,13 +191,13 @@ struct BackupView: View {
             
             let activeCount = recordBackups.filter { !$0.isArchived }.count
             let archivedCount = recordBackups.filter { $0.isArchived }.count
-            print("📤 バックアップデータの準備完了: \(subjects.count)教材, \(recordBackups.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
+            print("バックアップデータの準備完了: \(subjects.count)教材, \(recordBackups.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
             
         } catch {
             await MainActor.run {
                 self.backupStatus = .failed("データ取得エラー: \(error.localizedDescription)")
             }
-            print("📤 バックアップデータ準備エラー: \(error)")
+            print("バックアップデータ準備エラー: \(error)")
         }
     }
     
@@ -212,3 +212,4 @@ struct BackupView: View {
     BackupView()
         .modelContainer(for: [StudyRecordModel.self, SubjectModel.self])
 }
+

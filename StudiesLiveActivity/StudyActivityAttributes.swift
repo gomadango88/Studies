@@ -16,10 +16,10 @@ struct StudyActivityAttributes: ActivityAttributes {
         var isRunning: Bool
         // 最終更新時刻
         var lastUpdateTime: Date
-        // 🔥 追加: 今日の合計時間（フォーマット済み文字列）
+        // 今日の合計時間（フォーマット済み文字列）
         var todayTotalTime: String
         
-        // 🔥 修正：秒を"--"で表示するフォーマット
+        // 秒を"--"で表示するフォーマット
         var formattedTime: String {
             let totalSeconds = Int(elapsedTime)
             let hours = totalSeconds / 3600
@@ -31,7 +31,7 @@ struct StudyActivityAttributes: ActivityAttributes {
             }
         }
         
-        // 🆕 デバッグ用：完全な時間表示（必要に応じて）
+        // デバッグ用：完全な時間表示（必要に応じて）
         var fullFormattedTime: String {
             let totalSeconds = Int(elapsedTime)
             let hours = totalSeconds / 3600
@@ -52,3 +52,4 @@ struct StudyActivityAttributes: ActivityAttributes {
     // 開始時刻
     var startTime: Date
 }
+

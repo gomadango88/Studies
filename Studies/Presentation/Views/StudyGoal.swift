@@ -62,7 +62,7 @@ struct CustomProgressBar: View {
         .frame(height: height)
     }
     
-    // 🔥 微細なグラデーション自動生成
+    // 微細なグラデーション自動生成
     private var progressBarFill: some ShapeStyle {
         if useGradient {
             return AnyShapeStyle(
@@ -452,7 +452,7 @@ struct DailySummaryCard: View {
                     .foregroundColor(progress.todayMinutes >= goal.effectiveDailyGoal ? .green : .orange)
             }
             
-            // 🔥 カスタムプログレスバーに置き換え
+            // カスタムプログレスバー
             CustomProgressBar(
                 progress: progressValue,
                 color: goal.subjectColor,
@@ -467,7 +467,7 @@ struct DailySummaryCard: View {
                 
                 Spacer()
                 
-                Text("🔥 \(progress.streakDays) 日連続")
+                Text("\(progress.streakDays) 日連続")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.orange)
@@ -517,7 +517,7 @@ struct DailyGoalCard: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // 🔥 カスタムプログレスバーに置き換え
+                // カスタムプログレスバー
                 CustomProgressBar(
                     progress: progressPercentage,
                     color: goal.subjectColor,
@@ -591,3 +591,4 @@ struct DailyGoalCard: View {
     .padding()
 }
 #endif
+

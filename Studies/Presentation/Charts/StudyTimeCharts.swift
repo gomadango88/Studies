@@ -86,7 +86,7 @@ struct StudyTimeCharts: View {
             }
         }()
         
-        // 🔥 修正: 表示範囲内のすべての日付を生成
+        // 表示範囲内のすべての日付を生成
         var allDatesInRange: [Date] = []
         var currentDate = calendar.startOfDay(for: rangeStart)
         let endDate = calendar.startOfDay(for: rangeEnd)
@@ -116,18 +116,18 @@ struct StudyTimeCharts: View {
                 dayRows.reduce(0) { $0 + $1.durationMinutes }
             }
         
-        // 🔥 修正: すべての日の学習時間を計算（0分の日も含む）
+        // すべての日の学習時間を計算（0分の日も含む）
         let totalMinutes = allDatesInRange.reduce(0.0) { total, date in
             let dayMinutes = dailyTotals[date] ?? 0.0 // 記録がない日は0分
             return total + dayMinutes
         }
         
-        // 🔥 修正: すべての日数で割って平均を計算
+        // すべての日数で割って平均を計算
         let average = totalMinutes / Double(allDatesInRange.count)
         return average
     }
     
-    // 🔥 新規追加: 表示範囲の合計学習時間
+    // 表示範囲の合計学習時間
     var totalStudyTimeInVisibleRange: Double {
         let calendar = Calendar.current
         // 年表示の場合は月境界で範囲を調整
@@ -154,7 +154,7 @@ struct StudyTimeCharts: View {
         return totalMinutes
     }
     
-    // 🔥 「今日」ボタンの表示判定
+    // 「今日」ボタンの表示判定
     private var shouldShowTodayButton: Bool {
         let calendar = Calendar.current
         let now = Date()
@@ -183,7 +183,7 @@ struct StudyTimeCharts: View {
         }
     }
     
-    // 🔥 「今日」の適切なスクロール位置を計算
+    // 「今日」の適切なスクロール位置を計算
     private func getTodayScrollPosition() -> Date {
         let calendar = Calendar.current
         let now = Date()
@@ -242,7 +242,7 @@ struct StudyTimeCharts: View {
                         }
                     }
                     
-                    // 🔥 日付表示のHStackを基準にした固定レイアウト
+                    // 日付表示のHStackを基準にした固定レイアウト
                     HStack {
                         Text(dateRangeString)
                             .font(.callout)
@@ -253,7 +253,7 @@ struct StudyTimeCharts: View {
                         Spacer()
                     }
                     .overlay(
-                        // 🔥 ボタンを完全にオーバーレイとして配置（HStackのサイズに影響しない）
+                        // ボタンを完全にオーバーレイとして配置（HStackのサイズに影響しない）
                         HStack {
                             Spacer()
                             Button(action: {

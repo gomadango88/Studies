@@ -25,27 +25,19 @@ struct StudySessionView: View {
     init(subject: Subject) {
         self.subject = subject
         self._viewModel = State(wrappedValue: StudySessionViewModel(subject: subject))
-        print("🏗️ StudySessionView init for subject: \(subject.name) (ID: \(subject.id))")
     }
     
     var body: some View {
-        let _ = print("🎬 StudySessionView body called for subject: \(subject.name)")
-        let _ = print("🎬 DIContainer exists: \(diContainer != nil)")
-        let _ = print("🎬 ViewModel initialized: \(viewModel.isInitialized)")
         
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    let _ = print("🎬 Rendering subjectHeader")
                     subjectHeader
                     
-                    let _ = print("🎬 Rendering timeInputSection")
                     timeInputSection
                     
-                    let _ = print("🎬 Rendering efficientStopwatchSection")
                     efficientStopwatchSection
                     
-                    let _ = print("🎬 Rendering saveButton")
                     saveButton
                     
                     Color.clear.frame(height: 20)
@@ -57,25 +49,23 @@ struct StudySessionView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("閉じる", systemImage:"xmark", action: {
-                    print("🔴 Close button tapped")
-                                            handleCloseAction()
+                        handleCloseAction()
                     })
                         .labelStyle(.iconOnly)
                 }
             }
         }
-        // 🔥 修正: 完全なスワイプ閉じ防止
+        // スワイプでの閉じる動作を制御
         .presentationDetents([.large])
         .presentationDragIndicator(.visible) // ドラッグインジケーターを表示
         .interactiveDismissDisabled(shouldShowCloseConfirmation())
         
-        // 🔥 修正: シンプルなスワイプ検知
+        // スワイプ検知
         .simultaneousGesture(
             DragGesture()
                 .onEnded { value in
                     // 下向きスワイプを検知（距離や速度に関係なく）
                     if value.translation.height > 0 {
-                        print("📱 下向きスワイプ検知: \(value.translation.height)")
                         if shouldShowCloseConfirmation() {
                             showingCloseConfirmation = true
                             hasPresentedAlert = false
@@ -85,13 +75,8 @@ struct StudySessionView: View {
         )
         
         .onAppear {
-            print("👁️ StudySessionView onAppear called")
-            print("👁️ Subject: \(subject.name) (ID: \(subject.id))")
-            print("👁️ DIContainer: \(diContainer)")
-            
-            // DIContainerの確認と設定
             guard diContainer != nil else {
-                print("❌ DIContainer is nil on StudySessionView appear")
+                print("DIContainer is nil on StudySessionView appear")
                 return
             }
             
@@ -110,22 +95,18 @@ struct StudySessionView: View {
                 
                 if viewModel.isInitialized {
                     await viewModel.loadTodayRecords()
-                    print("✅ Today records loaded for \(subject.name)")
                 } else {
-                    print("❌ Failed to initialize ViewModel for \(subject.name)")
+                    print("Failed to initialize ViewModel for \(subject.name)")
                 }
             }
         }
 
         
         .task {
-            print("📋 Task started - checking initialization...")
             var attemptCount = 0
             while !viewModel.isInitialized {
                 attemptCount += 1
-                print("📋 Initialization attempt \(attemptCount)")
                 if attemptCount > 100 {
-                    print("❌ Initialization timeout after 5 seconds")
                     break
                 }
                 
@@ -133,34 +114,23 @@ struct StudySessionView: View {
             }
             
             if viewModel.isInitialized {
-                print("✅ Container initialized, loading records...")
                 await viewModel.loadTodayRecords()
-                print("✅ Today records loaded")
-            } else {
-                print("❌ Failed to initialize container")
             }
         }
         
         .onDisappear {
-            print("👋 StudySessionView onDisappear called")
-            
             if efficientStopwatchManager.isRunning {
-                print("⏹️ Stopping running stopwatch on disappear")
                 efficientStopwatchManager.stop()
             }
             
             if efficientStopwatchManager.elapsedTime == 0 && !efficientStopwatchManager.isRunning {
-                print("🔴 Ending Live Activity on disappear")
                 StudyActivityManager.shared.endActivity()
             }
-            
-            print("👋 StudySessionView onDisappear completed")
         }
         
         // 通常のアラート
         .alert("ストップウォッチが動作中です", isPresented: $showingCloseConfirmation) {
             Button("リセットして閉じる", role: .destructive) {
-                print("🔴 Resetting and closing from alert")
                 efficientStopwatchManager.reset()
                 StudyActivityManager.shared.endActivity()
                 dismissView()
@@ -202,13 +172,10 @@ struct StudySessionView: View {
     // MARK: - Actions
     
     private func handleCloseAction() {
-        print("🚪 handleCloseAction called")
         if shouldShowCloseConfirmation() {
-            print("⚠️ Showing confirmation dialog")
             showingCloseConfirmation = true
             hasPresentedAlert = false
         } else {
-            print("✅ Safe to dismiss")
             dismissView()
         }
     }
@@ -216,64 +183,49 @@ struct StudySessionView: View {
     // 🔥 修正: アラート表示判定を分離
     private func shouldShowCloseConfirmation() -> Bool {
         let shouldShow = efficientStopwatchManager.isRunning || efficientStopwatchManager.elapsedTime > 0
-        print("🔍 shouldShowCloseConfirmation: \(shouldShow) (running: \(efficientStopwatchManager.isRunning), elapsed: \(efficientStopwatchManager.elapsedTime))")
         return shouldShow
     }
     
     private func dismissView() {
-        print("🚪 Dismissing view")
         presentationMode.wrappedValue.dismiss()
     }
     
     // セッション復元処理
     private func checkAndRestoreActiveSession() {
-        print("🔍 Checking for active session restoration...")
         // StudySessionManagerが利用可能かチェック
         do {
             let _ = StudySessionManager.self
             if let activeSession = StudySessionManager.shared.getActiveSession(),
                activeSession.subjectId == subject.id {
-                print("🔄 Found matching active session for: \(subject.name)")
                 restoreFromActiveSession(activeSession)
                 return
             }
         } catch {
-            print("⚠️ StudySessionManager not available: \(error)")
         }
         
         // フォールバック：LiveActivityStateまたは通常の状態復元
-        print("📭 No matching StudySession found, trying LiveActivity state...")
         efficientStopwatchManager.restoreStateIfNeeded()
     }
     
     // アクティブセッションからの復元処理
     private func restoreFromActiveSession(_ activeSession: StudySessionState) {
-        print("🔄 Restoring from active session: \(activeSession.subjectName)")
-        print("🔄 Session details - elapsed: \(activeSession.elapsedTime), accumulated: \(activeSession.accumulatedTime), running: \(activeSession.isRunning)")
-        
         if activeSession.isRunning {
             // アプリ終了中の経過時間を計算
             let timeSinceLastUpdate = Date().timeIntervalSince(activeSession.lastUpdateTime)
-            print("⏰ Time since last update: \(timeSinceLastUpdate) seconds")
             
             let totalAccumulated = activeSession.accumulatedTime + timeSinceLastUpdate
-            print("📊 Setting accumulated time to: \(totalAccumulated)")
             
             efficientStopwatchManager.setAccumulatedTime(totalAccumulated)
             efficientStopwatchManager.setElapsedTime(totalAccumulated)
             
             Task {
-                print("🧹 Clearing all Live Activities before starting new one")
                 // 全ライブアクティビティをクリアしてから再開
                 await StudyActivityManager.shared.clearAllActivitiesOnAppLaunch()
                 
-                print("✅ All activities cleared, starting with Live Activity")
                 efficientStopwatchManager.startWithLiveActivity(for: subject)
-                print("▶️ Resumed stopwatch with accumulated time: \(totalAccumulated)")
             }
         } else {
             // 停止状態での復元
-            print("⏸️ Restoring stopped state with elapsed time: \(activeSession.elapsedTime)")
             efficientStopwatchManager.setAccumulatedTime(activeSession.accumulatedTime)
             efficientStopwatchManager.setElapsedTime(activeSession.elapsedTime)
             
@@ -282,14 +234,11 @@ struct StudySessionView: View {
                 await StudyActivityManager.shared.clearAllActivitiesOnAppLaunch()
             }
         }
-        
-        print("✅ Active session restoration completed")
     }
     
     // MARK: - Views
     
     private var subjectHeader: some View {
-        let _ = print("📋 subjectHeader rendering - subject: \(subject.name) (ID: \(subject.id))")
         return VStack(spacing: 12) {
             HStack {
                 RoundedRectangle(cornerRadius: 8)
@@ -318,7 +267,6 @@ struct StudySessionView: View {
     }
     
     private var timeInputSection: some View {
-        let _ = print("⏰ timeInputSection rendering")
         return VStack(alignment: .leading, spacing: 12) {
             Text("学習時間を入力")
                 .font(.headline)
@@ -370,7 +318,6 @@ struct StudySessionView: View {
     }
     
     private var efficientStopwatchSection: some View {
-        let _ = print("⏱️ efficientStopwatchSection rendering")
         return AdaptiveStopwatchView(
             stopwatchManager: efficientStopwatchManager,
             subject: subject
@@ -378,13 +325,10 @@ struct StudySessionView: View {
     }
     
     private var saveButton: some View {
-        let _ = print("💾 saveButton rendering - canSave: \(canSave)")
         return Button(action: {
-            print("💾 Save button tapped")
             Task {
                 await saveStudyRecordWithEfficientStopwatch()
                 if !viewModel.isSaving && viewModel.errorMessage == nil {
-                    print("✅ Save successful, dismissing after delay")
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     dismissView()
                 }
@@ -417,15 +361,10 @@ struct StudySessionView: View {
     private var canSave: Bool {
         let inputTime = TimeInterval(viewModel.inputHours * 3600 + viewModel.inputMinutes * 60)
         let result = inputTime > 0 || efficientStopwatchManager.elapsedTime > 0
-        print("🔍 canSave check - inputTime: \(inputTime), stopwatchTime: \(efficientStopwatchManager.elapsedTime), result: \(result)")
         return result
     }
     
     private func saveStudyRecordWithEfficientStopwatch() async {
-        print("💾 saveStudyRecordWithEfficientStopwatch called")
-        print("💾 Input time: \(viewModel.inputHours)h \(viewModel.inputMinutes)m")
-        print("💾 Stopwatch time: \(efficientStopwatchManager.elapsedTime) seconds")
-        
         let success = await viewModel.saveStudyRecordWithStopwatch(
             inputHours: viewModel.inputHours,
             inputMinutes: viewModel.inputMinutes,
@@ -433,7 +372,6 @@ struct StudySessionView: View {
         )
         
         if success {
-            print("✅ Save successful")
             HapticFeedback.success()
             await StudyActivityManager.shared.endActivity()
             viewModel.inputHours = 0
@@ -441,7 +379,7 @@ struct StudySessionView: View {
             efficientStopwatchManager.reset()
             await viewModel.loadTodayRecords()
         } else {
-            print("❌ Save failed")
+            print("Save failed")
             HapticFeedback.error()
         }
     }

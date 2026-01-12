@@ -1,5 +1,5 @@
 //
-// SubjectListView.swift（シート表示修正版）
+// SubjectListView.swift（シート表示修正版)
 //
 
 import SwiftUI
@@ -14,7 +14,6 @@ struct SubjectListView: View {
     @State private var searchText = ""
     
     init() {
-        print("🏗️ SubjectListView init")
     }
     
     var body: some View {
@@ -74,19 +73,16 @@ struct SubjectListView: View {
                 }
             })
         }
-        // 🔥 修正: .sheet(item:) を使用して確実な表示を実現
         .sheet(item: $selectedSubject) { subject in
             StudySessionView(subject: subject)
         }
-        // 🔥 デバッグ用: selectedSubjectの変化を監視
         .onChange(of: selectedSubject) { oldValue, newValue in
-            print("🔄 selectedSubject changed from: \(oldValue?.name ?? "nil") to: \(newValue?.name ?? "nil")")
+            print("selectedSubject changed from: \(oldValue?.name ?? "nil") to: \(newValue?.name ?? "nil")")
         }
     }
     
     // 確実な初期化処理
     private func initializeViewModel() async {
-        print("🔄 Initializing SubjectListView with DIContainer")
         
         await MainActor.run {
             isLoading = true
@@ -95,20 +91,19 @@ struct SubjectListView: View {
         // DIContainerが利用可能になるまで待機
         var attempts = 0
         while diContainer == nil && attempts < 50 {
-            print("⏳ Waiting for DIContainer... attempt \(attempts + 1)")
             try? await Task.sleep(nanoseconds: 100_000_000)
             attempts += 1
         }
         
         guard diContainer != nil else {
-            print("❌ DIContainer initialization timeout")
+            print("DIContainer initialization timeout")
             await MainActor.run {
                 isLoading = false
             }
             return
         }
         
-        print("✅ DIContainer available, creating ViewModel")
+        print("DIContainer available, creating ViewModel")
         
         let newViewModel = SubjectListViewModel()
         newViewModel.setContainer(diContainer)
@@ -124,7 +119,7 @@ struct SubjectListView: View {
             isLoading = false
         }
         
-        print("✅ SubjectListView initialization completed")
+        print("SubjectListView initialization completed")
     }
     
     // MARK: - Views
@@ -288,15 +283,15 @@ struct SubjectListView: View {
         .background(Color.clear)
         .contentShape(Rectangle())
         .onTapGesture {
-            print("📱 Subject tapped: \(subject.name) (ID: \(subject.id))")
+            print("Subject tapped: \(subject.name) (ID: \(subject.id))")
             handleSubjectTap(subject)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 Task {
-                    print("🔄 Pin toggle started for: \(subject.name)")
+                    print("Pin toggle started for: \(subject.name)")
                     await viewModel.toggleSubjectPin(subject)
-                    print("✅ Pin toggle completed for: \(subject.name)")
+                    print("Pin toggle completed for: \(subject.name)")
                 }
             } label: {
                 Image(systemName: subject.isPinned ? "pin.slash" : "pin")
@@ -368,12 +363,12 @@ struct SubjectListView: View {
     // MARK: - Methods
     
     private func handleSubjectTap(_ subject: Subject) {
-        print("🎯 handleSubjectTap called for: \(subject.name) (ID: \(subject.id))")
+        print("handleSubjectTap called for: \(subject.name) (ID: \(subject.id))")
         
         // 🔥 修正: より確実な状態更新
         DispatchQueue.main.async {
             selectedSubject = subject
-            print("✅ selectedSubject set to: \(subject.name)")
+            print("selectedSubject set to: \(subject.name)")
         }
     }
     
@@ -421,3 +416,4 @@ struct SubjectListView: View {
     SubjectListView()
         .environment(DIContainer.shared)
 }
+

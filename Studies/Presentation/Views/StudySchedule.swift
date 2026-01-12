@@ -190,7 +190,7 @@ class ScheduleViewModel {
         saveSchedules()
     }
     
-    // 🔥 修正: スケジュール保存時にウィジェット更新
+    // スケジュール保存時にウィジェット更新
     func saveSchedule(_ schedule: StudySchedule) {
         if let index = schedules.firstIndex(where: { $0.id == schedule.id }) {
             schedules[index] = schedule
@@ -200,53 +200,53 @@ class ScheduleViewModel {
         
         saveSchedules()
         
-        // 🔥 ウィジェット更新
+        // ウィジェット更新
         Task {
             await updateWidgetAfterScheduleChange()
         }
     }
     
-    // 🔥 修正: スケジュール削除時にウィジェット更新
+    // スケジュール削除時にウィジェット更新
     func deleteSchedule(atOffsets offsets: IndexSet) {
         schedules.remove(atOffsets: offsets)
         saveSchedules()
         
-        // 🔥 ウィジェット更新
+        // ウィジェット更新
         Task {
             await updateWidgetAfterScheduleChange()
         }
     }
     
-    // 🔥 修正: スケジュール削除時にウィジェット更新
+    // スケジュール削除時にウィジェット更新
     func deleteSchedule(at index: Int) {
         guard index < schedules.count else { return }
         schedules.remove(at: index)
         saveSchedules()
         
-        // 🔥 ウィジェット更新
+        // ウィジェット更新
         Task {
             await updateWidgetAfterScheduleChange()
         }
     }
     
-    // 🔥 修正: スケジュール削除時にウィジェット更新
+    // スケジュール削除時にウィジェット更新
     func deleteSchedule(withId id: UUID) {
         schedules.removeAll { $0.id == id }
         saveSchedules()
         
-        // 🔥 ウィジェット更新
+        // ウィジェット更新
         Task {
             await updateWidgetAfterScheduleChange()
         }
     }
     
-    // 🔥 修正: スケジュール有効化/無効化時にウィジェット更新
+    // スケジュール有効化/無効化時にウィジェット更新
     func toggleSchedule(withId id: UUID) {
         if let index = schedules.firstIndex(where: { $0.id == id }) {
             schedules[index].isEnabled.toggle()
             saveSchedules()
             
-            // 🔥 ウィジェット更新
+            // ウィジェット更新
             Task {
                 await updateWidgetAfterScheduleChange()
             }
@@ -268,71 +268,11 @@ class ScheduleViewModel {
             .max { $0.priority < $1.priority }
     }
     
-    // 🔥 新規追加: スケジュール変更後のウィジェット更新メソッド
+    // スケジュール変更後のウィジェット更新
     private func updateWidgetAfterScheduleChange() async {
-        print("📅 Updating widget after schedule change...")
-        
-        do {
-            // 全教材の今日の合計時間を計算
-            let totalTodayMinutes = await calculateTotalTodayMinutes()
-            
-            // 変更後のスケジュール目標を取得
-            let newDailyGoal = getTodayActiveSchedule()?.dailyGoalMinutes ?? 0
-            
-            // 実際の連続日数を取得
-            let actualStreakDays = await getActualStreakDays()
-            
-            let widgetData = WidgetStudyGoalData(
-                dailyGoal: newDailyGoal,
-                todayMinutes: totalTodayMinutes,
-                streakDays: actualStreakDays,
-                lastUpdated: Date()
-            )
-            
-            print("📅 Widget data after schedule change: \(widgetData)")
-            WidgetDataManager.shared.saveWidgetData(widgetData)
-            
-            // ウィジェット更新をリクエスト
-            WidgetCenter.shared.reloadAllTimelines()
-            
-            print("✅ Widget updated after schedule change - Goal: \(newDailyGoal)min, Today: \(totalTodayMinutes)min")
-            
-        } catch {
-            print("❌ Error updating widget after schedule change: \(error)")
-        }
+        print("Updating widget after schedule change via WidgetUpdateService...")
+        await WidgetUpdateService.update(using: container)
     }
-
-    // 🔥 全教材の今日の合計時間を計算（修正版）
-    private func calculateTotalTodayMinutes() async -> Int {
-        let studyRecordUseCase = container.studyRecordUseCase
-        
-        do {
-            let totalTodaySeconds = try await studyRecordUseCase.getTotalStudyTimeForToday()
-            let totalTodayMinutes = Int(totalTodaySeconds / 60)
-            
-            print("✅ Schedule change - total today minutes: \(totalTodayMinutes)")
-            return totalTodayMinutes
-            
-        } catch {
-            print("❌ Error calculating total today minutes: \(error)")
-            return 0
-        }
-    }
-
-    // 🔥 実際の連続日数を取得（修正版）
-    private func getActualStreakDays() async -> Int {
-        let studyRecordUseCase = container.studyRecordUseCase
-        
-        do {
-            let streakDays = try await studyRecordUseCase.getOverallConsecutiveStudyDays()
-            print("✅ Schedule change - streak days: \(streakDays)")
-            return streakDays
-        } catch {
-            print("❌ Error getting streak days: \(error)")
-            return 0
-        }
-    }
-
 }
 
 // MARK: - Main Schedule View
@@ -780,7 +720,7 @@ struct ScheduleEditorView: View {
                                 }
                         }
                         
-                        // 🔥 ピンクがあった場所に直接ColorPickerを配置
+                        // ColorPickerを配置
                         ColorPicker("", selection: $selectedColor)
                             .labelsHidden()
                             .frame(width: 30, height: 30)
@@ -1118,3 +1058,4 @@ struct SubjectGoalEditorView: View {
         availableSubjects: []
     ) { _ in }
 }
+
