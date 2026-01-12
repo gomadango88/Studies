@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WidgetKit
+import UIKit
 
 // MARK: - Helper Functions
 
@@ -87,7 +88,7 @@ struct SubjectGoal: Identifiable, Codable {
     }
 }
 
-struct CodableColor: Codable {
+struct CodableColor: Codable, Equatable {
     let red: Double
     let green: Double
     let blue: Double
@@ -105,6 +106,14 @@ struct CodableColor: Codable {
         self.green = Double(g)
         self.blue = Double(b)
         self.alpha = Double(a)
+    }
+    
+    static func == (lhs: CodableColor, rhs: CodableColor) -> Bool {
+        let eps = 1e-6
+        return abs(lhs.red - rhs.red) < eps &&
+               abs(lhs.green - rhs.green) < eps &&
+               abs(lhs.blue - rhs.blue) < eps &&
+               abs(lhs.alpha - rhs.alpha) < eps
     }
 }
 
@@ -548,15 +557,9 @@ struct ScheduleRowView: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            onTap()
-        }
+        .onTapGesture { onTap() }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                onDelete()
-            } label: {
-                Image(systemName: "trash")
-            }
+            Button(role: .destructive) { onDelete() } label: { Image(systemName: "trash") }
         }
     }
     
@@ -620,8 +623,8 @@ struct ScheduleEditorView: View {
     @State private var conflictingScheduleNames: [String] = []
     @State private var showingColorPicker = false
     @State private var showingConfirmationDialog = false
+    @State private var initialSnapshot: ScheduleFormSnapshot? = nil
 
-    
     var body: some View {
         NavigationView {
             Form {
@@ -661,9 +664,7 @@ struct ScheduleEditorView: View {
                             ),
                             in: 1...5,
                             step: 1,
-                            label: {
-                                Text("優先度")
-                            },
+                            label: { Text("優先度") },
                             minimumValueLabel: {
                                 Text("最低")
                                     .font(.caption)
@@ -710,7 +711,6 @@ struct ScheduleEditorView: View {
                 
                 Section(header: Text("スケジュール色")) {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 16) {
-                        // プリセット色（5色）
                         ForEach([Color.blue, Color.green, Color.orange, Color.red, Color.purple], id: \.self) { color in
                             Circle()
                                 .fill(color)
@@ -719,12 +719,9 @@ struct ScheduleEditorView: View {
                                     Circle()
                                         .stroke(selectedColor == color ? Color.primary : Color.clear, lineWidth: 2)
                                 )
-                                .onTapGesture {
-                                    selectedColor = color
-                                }
+                                .onTapGesture { selectedColor = color }
                         }
                         
-                        // ColorPickerを配置
                         ColorPicker("", selection: $selectedColor)
                             .labelsHidden()
                             .frame(width: 30, height: 30)
@@ -738,7 +735,6 @@ struct ScheduleEditorView: View {
                     .padding(.vertical, 8)
                 }
 
-                
                 Section(
                     header: Text("教材別目標（オプション）"),
                     footer: Text("特定の教材に重点を置きたい場合に設定します")
@@ -767,29 +763,28 @@ struct ScheduleEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("キャンセル", systemImage: "xmark") {
-                        showingConfirmationDialog = true
+                        if hasUnsavedChanges {
+                            showingConfirmationDialog = true
+                        } else {
+                            dismiss()
+                        }
                     }
                     .labelStyle(.iconOnly)
                     .confirmationDialog("新規スケジュール", isPresented: $showingConfirmationDialog, titleVisibility: .visible) {
                         Button("編集を続ける", role: .cancel) { }
-                        Button("変更内容を破棄", role: .destructive) {
-                            dismiss()
-                        }
+                        Button("変更内容を破棄", role: .destructive) { dismiss() }
                     } message: {
                         Text("この新規スケジュールを破棄してもよろしいですか？")
                     }
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("保存", systemImage: "checkmark") {
-                        handleSave()
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(selectedWeekdays.isEmpty)
+                    Button("保存", systemImage: "checkmark") { handleSave() }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(selectedWeekdays.isEmpty)
                 }
             }
-
             .onAppear {
                 if let schedule = schedule {
                     name = schedule.name
@@ -799,6 +794,9 @@ struct ScheduleEditorView: View {
                     isEnabled = schedule.isEnabled
                     subjectGoals = schedule.subjectGoals
                     priority = schedule.priority
+                }
+                if initialSnapshot == nil {
+                    initialSnapshot = makeSnapshot()
                 }
             }
             .sheet(isPresented: $showingSubjectGoalEditor) {
@@ -814,7 +812,50 @@ struct ScheduleEditorView: View {
         }
     }
     
-    // ScheduleEditorView内に追加
+    private struct ScheduleFormSnapshot: Equatable {
+        var name: String
+        var dailyGoal: Int
+        var selectedWeekdays: Set<Weekday>
+        var color: CodableColor
+        var isEnabled: Bool
+        var subjectGoals: [SubjectGoalKey]
+        var priority: Int
+    }
+
+    private struct SubjectGoalKey: Equatable {
+        var subjectId: UUID
+        var subjectName: String
+        var subjectColor: CodableColor
+        var goalMinutes: Int
+        var isEnabled: Bool
+    }
+
+    private func makeSnapshot() -> ScheduleFormSnapshot {
+        let goals = subjectGoals.map { goal in
+            SubjectGoalKey(
+                subjectId: goal.subjectId,
+                subjectName: goal.subjectName,
+                subjectColor: goal.subjectColor,
+                goalMinutes: goal.goalMinutes,
+                isEnabled: goal.isEnabled
+            )
+        }
+        return ScheduleFormSnapshot(
+            name: name,
+            dailyGoal: dailyGoal,
+            selectedWeekdays: selectedWeekdays,
+            color: CodableColor(selectedColor),
+            isEnabled: isEnabled,
+            subjectGoals: goals,
+            priority: priority
+        )
+    }
+
+    private var hasUnsavedChanges: Bool {
+        guard let initial = initialSnapshot else { return false }
+        return makeSnapshot() != initial
+    }
+    
     private var isCustomColorSelected: Bool {
         let presetColors: [Color] = [.blue, .green, .orange, .red, .purple]
         return !presetColors.contains(selectedColor)
@@ -832,18 +873,14 @@ struct ScheduleEditorView: View {
     
     private func checkPriorityConflicts() -> [String] {
         let currentScheduleId = schedule?.id
-        
         let conflictingSchedules = existingSchedules.filter { existingSchedule in
             guard existingSchedule.id != currentScheduleId else { return false }
             guard existingSchedule.isEnabled else { return false }
             guard existingSchedule.priority == priority else { return false }
-            
             let hasWeekdayOverlap = !existingSchedule.selectedWeekdays.isDisjoint(with: selectedWeekdays)
             guard hasWeekdayOverlap else { return false }
-            
             return true
         }
-        
         return conflictingSchedules.map { $0.name }
     }
     
@@ -858,9 +895,7 @@ struct ScheduleEditorView: View {
     
     private func performSave() {
         let savedSchedule: StudySchedule
-        
         if let existingSchedule = schedule {
-            // 編集モード: 既存のIDを保持
             savedSchedule = StudySchedule(
                 id: existingSchedule.id,
                 name: name.isEmpty ? "無題のスケジュール" : name,
@@ -872,7 +907,6 @@ struct ScheduleEditorView: View {
                 priority: priority
             )
         } else {
-            // 新規作成モード: 新しいIDを自動生成
             savedSchedule = StudySchedule(
                 name: name.isEmpty ? "無題のスケジュール" : name,
                 dailyGoalMinutes: dailyGoal,
@@ -883,7 +917,6 @@ struct ScheduleEditorView: View {
                 priority: priority
             )
         }
-        
         onSave(savedSchedule)
         dismiss()
     }
@@ -922,30 +955,6 @@ struct ScheduleEditorView: View {
     }
 }
 
-// MARK: - Supporting Views
-
-struct WeekdayToggleButton: View {
-    let weekday: Weekday
-    let isSelected: Bool
-    let color: Color
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            Text(weekday.shortName)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(isSelected ? .white : .primary)
-                .frame(width: 32, height: 32)
-                .background(
-                    Circle()
-                        .fill(isSelected ? color : Color(.systemGray6))
-                )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
 struct SubjectGoalRow: View {
     let subjectGoal: SubjectGoal
     let onDelete: () -> Void
@@ -971,17 +980,102 @@ struct SubjectGoalRow: View {
     }
 }
 
+struct TwoComponentTimePicker: UIViewRepresentable {
+    @Binding var hours: Int
+    @Binding var minutes: Int
+
+    private let hoursRange = Array(0..<24)
+    private let minutesRange = Array(stride(from: 0, through: 55, by: 5))
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> UIPickerView {
+        let picker = UIPickerView()
+        picker.dataSource = context.coordinator
+        picker.delegate = context.coordinator
+        // Initial selection
+        let hourRow = hoursRange.firstIndex(of: normalizedHours(hours)) ?? 0
+        let minuteRow = minutesRange.firstIndex(of: normalizedMinutes(minutes)) ?? 0
+        picker.selectRow(hourRow, inComponent: 0, animated: false)
+        picker.selectRow(minuteRow, inComponent: 1, animated: false)
+        return picker
+    }
+
+    func updateUIView(_ uiView: UIPickerView, context: Context) {
+        let hourRow = hoursRange.firstIndex(of: normalizedHours(hours)) ?? 0
+        let minuteRow = minutesRange.firstIndex(of: normalizedMinutes(minutes)) ?? 0
+        if uiView.selectedRow(inComponent: 0) != hourRow {
+            uiView.selectRow(hourRow, inComponent: 0, animated: true)
+        }
+        if uiView.selectedRow(inComponent: 1) != minuteRow {
+            uiView.selectRow(minuteRow, inComponent: 1, animated: true)
+        }
+    }
+
+    private func normalizedHours(_ value: Int) -> Int {
+        max(0, min(23, value))
+    }
+
+    private func normalizedMinutes(_ value: Int) -> Int {
+        let clamped = max(0, min(55, value))
+        return (clamped / 5) * 5
+    }
+
+    class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
+        var parent: TwoComponentTimePicker
+        init(_ parent: TwoComponentTimePicker) { self.parent = parent }
+
+        func numberOfComponents(in pickerView: UIPickerView) -> Int { 2 }
+
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+            component == 0 ? parent.hoursRange.count : parent.minutesRange.count
+        }
+
+        func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+            if component == 0 {
+                let h = parent.hoursRange[row]
+                return "\(h) 時間"
+            } else {
+                let m = parent.minutesRange[row]
+                return "\(m) 分"
+            }
+        }
+
+        func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+            if component == 0 {
+                let h = parent.hoursRange[row]
+                if parent.hours != h { parent.hours = h }
+            } else {
+                let m = parent.minutesRange[row]
+                if parent.minutes != m { parent.minutes = m }
+            }
+        }
+    }
+}
+
 struct SubjectGoalEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let availableSubjects: [Subject]
     let onSave: (SubjectGoal) -> Void
     
     @State private var selectedSubject: Subject?
-    @State private var goalMinutes = 30
+    @State private var selectedHours = 0
+    @State private var selectedMinutes = 0
     
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("時間設定")) {
+                    HStack {
+                        Spacer()
+                        TwoComponentTimePicker(hours: $selectedHours, minutes: $selectedMinutes)
+                            .frame(height: 144)
+                        Spacer()
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowBackground(Color.clear)
+                }
+
                 Section(header: Text("教材選択")) {
                     ForEach(availableSubjects) { subject in
                         HStack {
@@ -1001,19 +1095,6 @@ struct SubjectGoalEditorView: View {
                         }
                     }
                 }
-                
-                Section(header: Text("目標時間")) {
-                    HStack {
-                        Text("目標時間")
-                        Spacer()
-                        Picker("", selection: $goalMinutes) {
-                            ForEach(Array(stride(from: 30, through: 240, by: 30)), id: \.self) { minutes in
-                                Text("\(minutes) 分").tag(minutes)
-                            }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                    }
-                }
             }
             .navigationTitle("教材別目標を追加")
             .navigationBarTitleDisplayMode(.inline)
@@ -1030,7 +1111,7 @@ struct SubjectGoalEditorView: View {
                                                     subjectId: subject.id,
                                                     subjectName: subject.name,
                                                     subjectColor: CodableColor(subject.color),
-                                                    goalMinutes: goalMinutes,
+                                                    goalMinutes: selectedHours * 60 + selectedMinutes,
                                                     isEnabled: true
                                                 )
                                                 
@@ -1040,10 +1121,32 @@ struct SubjectGoalEditorView: View {
                                         })
                     .labelStyle(.iconOnly)
                     .fontWeight(.semibold)
-                    .disabled(selectedSubject == nil)
+                    .disabled(selectedSubject == nil || (selectedHours == 0 && selectedMinutes == 0))
                 }
             }
         }
+    }
+}
+
+struct WeekdayToggleButton: View {
+    let weekday: Weekday
+    let isSelected: Bool
+    let color: Color
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            Text(weekday.shortName)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(width: 32, height: 32)
+                .background(
+                    Circle()
+                        .fill(isSelected ? color : Color(.systemGray6))
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
