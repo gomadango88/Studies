@@ -618,6 +618,7 @@ struct ScheduleEditorView: View {
     @State private var isEnabled = true
     @State private var subjectGoals: [SubjectGoal] = []
     @State private var showingSubjectGoalEditor = false
+    @State private var editingSubjectGoal: SubjectGoal? = nil
     @State private var priority = 3
     @State private var showingPriorityConflictAlert = false
     @State private var conflictingScheduleNames: [String] = []
@@ -740,20 +741,32 @@ struct ScheduleEditorView: View {
                     footer: Text("特定の教材に重点を置きたい場合に設定します")
                 ) {
                     ForEach(subjectGoals.indices, id: \.self) { index in
-                        SubjectGoalRow(subjectGoal: subjectGoals[index]) {
-                            subjectGoals.remove(at: index)
-                        }
+                        SubjectGoalRow(subjectGoal: subjectGoals[index])
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                editingSubjectGoal = subjectGoals[index]
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    subjectGoals.remove(at: index)
+                                } label: {
+                                    Label("削除", systemImage: "trash")
+                                }
+                            }
                     }
                     
-                    Button(action: { showingSubjectGoalEditor = true }) {
-                        Label {
+                    Button(action: {
+                        showingSubjectGoalEditor = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.green)
                             Text("教材別目標を追加")
                                 .font(.body)
                                 .foregroundColor(.primary)
-                        } icon: {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.green)
+                            Spacer()
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -799,8 +812,21 @@ struct ScheduleEditorView: View {
                     initialSnapshot = makeSnapshot()
                 }
             }
+            .sheet(item: $editingSubjectGoal) { goal in
+                SubjectGoalEditorView(
+                    availableSubjects: availableSubjects,
+                    initialSubjectGoal: goal
+                ) { updatedGoal in
+                    if let idx = subjectGoals.firstIndex(where: { $0.id == updatedGoal.id }) {
+                        subjectGoals[idx] = updatedGoal
+                    }
+                }
+            }
             .sheet(isPresented: $showingSubjectGoalEditor) {
-                SubjectGoalEditorView(availableSubjects: availableSubjects) { newSubjectGoal in
+                SubjectGoalEditorView(
+                    availableSubjects: availableSubjects,
+                    initialSubjectGoal: nil
+                ) { newSubjectGoal in
                     subjectGoals.append(newSubjectGoal)
                 }
             }
@@ -957,7 +983,6 @@ struct ScheduleEditorView: View {
 
 struct SubjectGoalRow: View {
     let subjectGoal: SubjectGoal
-    let onDelete: () -> Void
     
     var body: some View {
         HStack {
@@ -965,17 +990,11 @@ struct SubjectGoalRow: View {
                 .fill(subjectGoal.uiColor)
                 .frame(width: 12, height: 12)
             Text(subjectGoal.subjectName)
-                .font(.subheadline)
+                .font(.body)
             Spacer()
             Text("\(subjectGoal.goalMinutes)分")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-            Button {
-                onDelete()
-            } label: {
-                Image(systemName: "minus.circle.fill")
-                    .foregroundColor(.red)
-            }
         }
     }
 }
@@ -1056,6 +1075,7 @@ struct TwoComponentTimePicker: UIViewRepresentable {
 struct SubjectGoalEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let availableSubjects: [Subject]
+    let initialSubjectGoal: SubjectGoal?
     let onSave: (SubjectGoal) -> Void
     
     @State private var selectedSubject: Subject?
@@ -1096,7 +1116,16 @@ struct SubjectGoalEditorView: View {
                     }
                 }
             }
-            .navigationTitle("教材別目標を追加")
+            .onAppear {
+                if let initial = initialSubjectGoal {
+                    selectedHours = max(0, min(23, initial.goalMinutes / 60))
+                    selectedMinutes = max(0, min(59, initial.goalMinutes % 60))
+                    if let found = availableSubjects.first(where: { $0.id == initial.subjectId }) {
+                        selectedSubject = found
+                    }
+                }
+            }
+            .navigationTitle(initialSubjectGoal == nil ? "教材別目標を追加" : "教材別目標を編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
