@@ -211,7 +211,7 @@ struct StudyTimeCharts: View {
                     HStack(spacing: 24) {
                         // 平均時間表示
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("平均")
+                            Text(span == .twelveMonths ? "月平均" : "平均")
                                 .font(.callout)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.secondary)
@@ -686,3 +686,4 @@ extension StudyChartDataManager.Span {
     let view = StudyTimeCharts()
         .environment(DIContainer.shared)
 }
+
