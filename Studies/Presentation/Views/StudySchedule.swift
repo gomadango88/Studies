@@ -304,25 +304,33 @@ struct WeeklyGoalSchedulePreview: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        Task { @MainActor in
-                            editingSchedule = nil
-                            try? await Task.sleep(nanoseconds: 50_000_000)
-                            showingScheduleEditor = true
-                        }
+                        editingSchedule = nil
+                        showingScheduleEditor = true
                     } label: {
                         Image(systemName: "plus")
                             .font(.headline)
                     }
                 }
             }
-            .sheet(isPresented: $showingScheduleEditor, onDismiss: {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    editingSchedule = nil
-                }
-            }) {
+            .sheet(item: $editingSchedule, onDismiss: {
+                editingSchedule = nil
+            }) { schedule in
                 if let viewModel = viewModel {
                     ScheduleEditorView(
-                        schedule: editingSchedule,
+                        schedule: schedule,
+                        existingSchedules: viewModel.schedules,
+                        availableSubjects: viewModel.subjects,
+                        onSave: { updatedSchedule in
+                            viewModel.saveSchedule(updatedSchedule)
+                            checkForConflicts(viewModel: viewModel)
+                        }
+                    )
+                }
+            }
+            .sheet(isPresented: $showingScheduleEditor) {
+                if let viewModel = viewModel {
+                    ScheduleEditorView(
+                        schedule: nil,
                         existingSchedules: viewModel.schedules,
                         availableSubjects: viewModel.subjects,
                         onSave: { updatedSchedule in
@@ -436,11 +444,7 @@ struct WeeklyGoalSchedulePreview: View {
     
     private func handleScheduleTap(schedule: StudySchedule) {
         guard !showingScheduleEditor else { return }
-        Task { @MainActor in
-            editingSchedule = schedule
-            try? await Task.sleep(nanoseconds: 50_000_000)
-            showingScheduleEditor = true
-        }
+        editingSchedule = schedule
     }
     
     private func checkForConflicts(viewModel: ScheduleViewModel) {
