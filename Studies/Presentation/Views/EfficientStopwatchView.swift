@@ -20,25 +20,13 @@ struct EfficientStopwatchView: View {
             
             // 修正：停止中は静的表示、動作中のみSystemFormatStyleを使用
             VStack(spacing: 8) {
-                Group {
-                    if stopwatchManager.isRunning,
-                       let startDate = stopwatchManager.stopwatchStartDate {
-                        // 動作中：自動更新される高効率表示（Apple純正と同じ）
-                        Text(TimeDataSource<Date>.currentDate,
-                             format: .stopwatch(startingAt: startDate))
-                    } else {
-                        // 停止中：静的な formattedTime を表示
-                        Text(stopwatchManager.formattedTime)
-                            .font(.system(size: 48, weight: .thin, design: .rounded))
-                            .monospacedDigit()
-                    }
-                }
-                .font(.system(size: 48, weight: .thin, design: .rounded))
-                .monospacedDigit()
-                .foregroundColor(.primary)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-                .animation(.none, value: stopwatchManager.isRunning)
+                Text(stopwatchManager.formattedTime)
+                    .font(.system(size: 48, weight: .thin, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(.primary)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .animation(.none, value: stopwatchManager.isRunning)
             }
             .padding(.vertical, 20)
             
@@ -181,3 +169,4 @@ struct AdaptiveStopwatchView: View {
         }
     }
 }
+

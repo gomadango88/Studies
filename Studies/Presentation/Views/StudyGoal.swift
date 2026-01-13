@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 // MARK: - Data Models
 
@@ -87,6 +88,8 @@ struct CustomProgressBar: View {
 class GoalViewModel {
     private let container: DIContainer
     private var scheduleViewModel: ScheduleViewModel?
+    
+    private var modelContext: ModelContext { container.modelContainer.mainContext }
     
     var goals: [StudyGoal] = []
     var progress: [StudyProgress] = []
@@ -183,12 +186,21 @@ class GoalViewModel {
             
             for goal in goals.filter({ $0.subjectId != nil }) {
                 guard let subjectId = goal.subjectId else { continue }
-                
+
                 let todayTime = calculateTotalTime(for: subjectId, in: todayRecords)
                 let weekTime = calculateTotalTime(for: subjectId, in: weekRecords)
                 let monthTime = calculateTotalTime(for: subjectId, in: monthRecords)
-                let streak = await calculateStreak(for: subjectId)
-                
+
+                // 今日の達成状況を保存（教材別）
+                upsertAchievement(
+                    for: today,
+                    subjectId: subjectId,
+                    requiredMinutes: goal.effectiveDailyGoal,
+                    achievedMinutes: Int(todayTime / 60)
+                )
+
+                let streak = calculateStreakFromAchievements(for: subjectId)
+
                 progress.append(StudyProgress(
                     subjectId: subjectId,
                     subjectName: goal.subjectName,
@@ -202,8 +214,19 @@ class GoalViewModel {
             let totalTodayTime = todayRecords.reduce(0) { $0 + $1.duration }
             let totalWeekTime = weekRecords.reduce(0) { $0 + $1.duration }
             let totalMonthTime = monthRecords.reduce(0) { $0 + $1.duration }
-            let overallStreak = await calculateOverallStreak()
-            
+
+            // 全体目標（今日）の達成状況を保存
+            if let overallGoal = goals.first(where: { $0.subjectId == nil }) {
+                upsertAchievement(
+                    for: today,
+                    subjectId: nil,
+                    requiredMinutes: overallGoal.effectiveDailyGoal,
+                    achievedMinutes: Int(totalTodayTime / 60)
+                )
+            }
+
+            let overallStreak = calculateStreakFromAchievements(for: nil)
+
             let overallProgress = StudyProgress(
                 subjectId: nil,
                 subjectName: "全体",
@@ -225,21 +248,75 @@ class GoalViewModel {
             .reduce(0) { $0 + $1.duration }
     }
     
-    private func calculateStreak(for subjectId: UUID) async -> Int {
-        do {
-            return try await container.studyRecordUseCase.getConsecutiveStudyDays(for: subjectId)
-        } catch {
-            print("連続学習日数計算エラー（教材別）: \(error)")
-            return 0
+    // 保存済み達成結果から教材別の連続達成日数を算出
+    @MainActor
+    private func calculateStreakFromAchievements(for subjectId: UUID?) -> Int {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+
+        // Helper to fetch achievement record by date
+        func achievement(on date: Date) -> DailyAchievementModel? {
+            let key = DailyAchievementModel.makeKey(date: date, subjectId: subjectId)
+            let descriptor = FetchDescriptor<DailyAchievementModel>(
+                predicate: #Predicate { $0.key == key },
+                sortBy: []
+            )
+            return try? modelContext.fetch(descriptor).first
         }
+
+        // Determine starting date: if today is achieved, start from today; otherwise start from yesterday
+        let startDate: Date = {
+            if let rec = achievement(on: todayStart), rec.achieved {
+                return todayStart
+            } else {
+                return calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            }
+        }()
+
+        var date = startDate
+        var count = 0
+        for _ in 0..<365 {
+            guard let rec = achievement(on: date) else { break }
+            if rec.achieved {
+                count += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: date) else { break }
+                date = prev
+            } else {
+                break
+            }
+        }
+        return count
     }
-    
-    private func calculateOverallStreak() async -> Int {
+
+    // 今日の達成状況を保存（アップサート）
+    @MainActor
+    private func upsertAchievement(for date: Date, subjectId: UUID?, requiredMinutes: Int, achievedMinutes: Int) {
+        let key = DailyAchievementModel.makeKey(date: date, subjectId: subjectId)
+        let descriptor = FetchDescriptor<DailyAchievementModel>(
+            predicate: #Predicate { $0.key == key },
+            sortBy: []
+        )
+        let achieved = achievedMinutes >= max(requiredMinutes, 0)
         do {
-            return try await container.studyRecordUseCase.getOverallConsecutiveStudyDays()
+            if let existing = try modelContext.fetch(descriptor).first {
+                existing.requiredMinutes = requiredMinutes
+                existing.achievedMinutes = achievedMinutes
+                existing.achieved = achieved
+                existing.computedAt = Date()
+            } else {
+                let model = DailyAchievementModel(
+                    date: date,
+                    subjectId: subjectId,
+                    requiredMinutes: requiredMinutes,
+                    achievedMinutes: achievedMinutes,
+                    achieved: achieved,
+                    computedAt: Date()
+                )
+                modelContext.insert(model)
+            }
+            try modelContext.save()
         } catch {
-            print("連続学習日数計算エラー（全体）: \(error)")
-            return 0
+            print("達成状況の保存エラー: \(error)")
         }
     }
     
@@ -467,7 +544,7 @@ struct DailySummaryCard: View {
                 
                 Spacer()
                 
-                Text("\(progress.streakDays) 日連続")
+                Text("目標達成: \(progress.streakDays)日連続")
                     .font(.subheadline)
                     .fontWeight(.medium)
                     .foregroundColor(.orange)

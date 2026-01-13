@@ -5,14 +5,6 @@
 //  Created by kasahara takuma on 2025/08/08.
 //
 
-
-//
-//  AddSubjectView.swift
-//  Studies
-//
-//  Created by takuma on 2025/08/08.
-//
-
 import SwiftUI
 
 struct AddSubjectView: View {
@@ -21,6 +13,27 @@ struct AddSubjectView: View {
     @State private var viewModel: AddSubjectViewModel
     
     let onSubjectAdded: () -> Void
+    
+    private let presetColors: [Color] = [.blue, .green, .orange, .red, .purple]
+    
+    private var isCustomColorSelected: Bool {
+        !presetColors.contains(viewModel.selectedColor)
+    }
+    
+    private var canSave: Bool {
+        !viewModel.subjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !viewModel.isSaving
+    }
+    
+    private func attemptSave() {
+        guard canSave else { return }
+        Task {
+            let success = await viewModel.saveSubject()
+            if success {
+                onSubjectAdded()
+                dismiss()
+            }
+        }
+    }
     
     init(onSubjectAdded: @escaping () -> Void) {
         self.onSubjectAdded = onSubjectAdded
@@ -31,15 +44,48 @@ struct AddSubjectView: View {
         NavigationView {
             Form {
                 Section {
-                    TextField("教材名を入力", text: $viewModel.subjectName)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    HStack {
+                        Text("教材名")
+                        Spacer()
+                        TextField("例: 数学", text: $viewModel.subjectName)
+                            .multilineTextAlignment(.trailing)
+                            .submitLabel(.done)
+                            .onSubmit { attemptSave() }
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 } header: {
-                    Text("教材名")
+                    Text("基本設定")
+                } footer: {
+                    if viewModel.subjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("教材名を入力してください")
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 Section {
-                    ColorPicker("教材の色を選択", selection: $viewModel.selectedColor)
-                        .padding(.vertical, 8)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 16) {
+                        ForEach(presetColors, id: \.self) { color in
+                            Circle()
+                                .fill(color)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Circle()
+                                        .stroke(viewModel.selectedColor == color ? Color.primary : Color.clear, lineWidth: 2)
+                                )
+                                .onTapGesture { viewModel.selectedColor = color }
+                        }
+
+                        ColorPicker("", selection: $viewModel.selectedColor)
+                            .labelsHidden()
+                            .frame(width: 30, height: 30)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.primary, lineWidth: 2)
+                                    .opacity(isCustomColorSelected ? 1 : 0)
+                            )
+                    }
+                    .padding(.vertical, 8)
                 } header: {
                     Text("色")
                 }
@@ -74,6 +120,9 @@ struct AddSubjectView: View {
                     }
                 }
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("新しい教材")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -83,24 +132,19 @@ struct AddSubjectView: View {
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("保存", systemImage: "checkmark", action:{
-                                            Task {
-                                                let success = await viewModel.saveSubject()
-                                                if success {
-                                                    onSubjectAdded()
-                                                    dismiss()
-                                                }
-                                            }
-                                        } )
+                    Button("保存", systemImage: "checkmark", action: { attemptSave() })
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.subjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSaving)
-                    .fontWeight(.semibold)
+                        .disabled(viewModel.subjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSaving)
+                        .fontWeight(.semibold)
                 }
             }
             .onAppear {
                 viewModel.setContainer(diContainer)
             }
+            .interactiveDismissDisabled(viewModel.isSaving)
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 }

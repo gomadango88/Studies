@@ -34,7 +34,7 @@ class EfficientStopwatchManager: StopwatchProtocol {
         isRunning = true
         
         // Apple推奨：10秒間隔に変更 + tolerance設定で省電力化
-        timerCancellable = Timer.publish(every: 10.0, on: .main, in: .common)
+        timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .map { _ in Date() }
             .sink { [weak self] currentDate in
@@ -247,7 +247,7 @@ class EfficientStopwatchManager: StopwatchProtocol {
             self.startDate = Date()
             
             // タイマーを再開
-            timerCancellable = Timer.publish(every: 10.0, on: .main, in: .common)
+            timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
                 .autoconnect()
                 .map { _ in Date() }
                 .sink { [weak self] _ in
@@ -267,6 +267,15 @@ class EfficientStopwatchManager: StopwatchProtocol {
             let timeSinceLastUpdate = Date().timeIntervalSince(liveActivityState.lastUpdateTime)
             self.elapsedTime += timeSinceLastUpdate
             self.startDate = Date()
+            
+            // 累積時間を現在の経過時間に合わせて設定し、タイマーを開始
+            self.accumulatedTime = self.elapsedTime
+            timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
+                .autoconnect()
+                .map { _ in Date() }
+                .sink { [weak self] _ in
+                    self?.updateElapsedTime()
+                }
         }
     }
     

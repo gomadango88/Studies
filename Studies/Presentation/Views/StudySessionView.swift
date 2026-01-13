@@ -60,20 +60,6 @@ struct StudySessionView: View {
         .presentationDragIndicator(.visible) // ドラッグインジケーターを表示
         .interactiveDismissDisabled(shouldShowCloseConfirmation())
         
-        // スワイプ検知
-        .simultaneousGesture(
-            DragGesture()
-                .onEnded { value in
-                    // 下向きスワイプを検知（距離や速度に関係なく）
-                    if value.translation.height > 0 {
-                        if shouldShowCloseConfirmation() {
-                            showingCloseConfirmation = true
-                            hasPresentedAlert = false
-                        }
-                    }
-                }
-        )
-        
         .onAppear {
             guard diContainer != nil else {
                 print("DIContainer is nil on StudySessionView appear")
@@ -180,7 +166,6 @@ struct StudySessionView: View {
         }
     }
     
-    // 🔥 修正: アラート表示判定を分離
     private func shouldShowCloseConfirmation() -> Bool {
         let shouldShow = efficientStopwatchManager.isRunning || efficientStopwatchManager.elapsedTime > 0
         return shouldShow
@@ -271,37 +256,11 @@ struct StudySessionView: View {
             Text("学習時間を入力")
                 .font(.headline)
             
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("時間")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Picker("時間", selection: $viewModel.inputHours) {
-                        ForEach(0..<24) { hour in
-                            Text("\(hour)時間").tag(hour)
-                        }
-                    }
-                    .pickerStyle(WheelPickerStyle())
-                    .frame(height: 80)
-                }
-                .frame(maxWidth: .infinity)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("分")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Picker("分", selection: $viewModel.inputMinutes) {
-                        ForEach(Array(stride(from: 0, to: 60, by: 5)), id: \.self) { minute in
-                            Text("\(minute)分").tag(minute)
-                        }
-                    }
-                    .pickerStyle(WheelPickerStyle())
-                    .frame(height: 80)
-
-                }
-                .frame(maxWidth: .infinity)
+            HStack {
+                Spacer()
+                TwoComponentTimePicker(hours: $viewModel.inputHours, minutes: $viewModel.inputMinutes)
+                    .frame(height: 160)
+                Spacer()
             }
             
             if viewModel.inputHours > 0 || viewModel.inputMinutes > 0 {
@@ -391,3 +350,4 @@ struct StudySessionView: View {
     )
     .environment(DIContainer.shared)
 }
+
