@@ -8,11 +8,14 @@
 import Foundation
 import SwiftUI
 import WidgetKit
+import SwiftData
 
 @MainActor
 @Observable
 class StudySessionViewModel {
     private var diContainer: DIContainer?
+    
+    private var modelContext: ModelContext? { diContainer?.modelContainer.mainContext }
     
     private var studyRecordUseCase: StudyRecordUseCaseProtocol? {
         diContainer?.studyRecordUseCase
@@ -173,6 +176,22 @@ class StudySessionViewModel {
             stopwatchManager.reset()
             await loadTodayRecords()
             
+            // Update daily achievements (subject and overall)
+            let today = Calendar.current.startOfDay(for: Date())
+            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
+            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
+            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
+
+            // Overall
+            if let useCase = studyRecordUseCase {
+                do {
+                    let allRecords = try await useCase.getRecordsForDate(today)
+                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
+                    let overallRequired = await getActualDailyGoalMinutes()
+                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
+                } catch { }
+            }
+            
             // ウィジェットデータ更新
             await updateWidgetData()
             
@@ -211,6 +230,22 @@ class StudySessionViewModel {
                 studyDate: Date()
             )
             
+            // Update daily achievements (subject and overall)
+            let today = Calendar.current.startOfDay(for: Date())
+            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
+            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
+            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
+
+            // Overall
+            if let useCase = studyRecordUseCase {
+                do {
+                    let allRecords = try await useCase.getRecordsForDate(today)
+                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
+                    let overallRequired = await getActualDailyGoalMinutes()
+                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
+                } catch { }
+            }
+            
             // ウィジェットデータ更新
             await updateWidgetData()
             
@@ -238,6 +273,22 @@ class StudySessionViewModel {
         do {
             try await useCase.deleteRecord(record)
             await loadTodayRecords()
+            
+            // Update daily achievements (subject and overall)
+            let today = Calendar.current.startOfDay(for: Date())
+            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
+            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
+            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
+
+            // Overall
+            if let useCase = studyRecordUseCase {
+                do {
+                    let allRecords = try await useCase.getRecordsForDate(today)
+                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
+                    let overallRequired = await getActualDailyGoalMinutes()
+                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
+                } catch { }
+            }
             
             // ウィジェットデータ更新
             await updateWidgetData()
@@ -331,20 +382,7 @@ class StudySessionViewModel {
     
     // 実際の連続日数を取得
     private func getActualStreakDays() async -> Int {
-        
-        guard let useCase = studyRecordUseCase else {
-            print("StudyRecordUseCase not available")
-            return 0
-        }
-        
-        do {
-            let streakDays = try await useCase.getOverallConsecutiveStudyDays()
-            return streakDays
-            
-        } catch {
-            print("Error getting streak days: \(error)")
-            return 0
-        }
+        return calculateOverallStreakFromAchievements()
     }
     
     private func formatTimeInterval(_ timeInterval: TimeInterval) -> String {
@@ -357,6 +395,86 @@ class StudySessionViewModel {
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
         }
+    }
+    
+    // MARK: - Daily Achievement Persistence
+    private func upsertAchievement(for date: Date, subjectId: UUID?, requiredMinutes: Int, achievedMinutes: Int) {
+        guard let context = modelContext else { return }
+        let key = DailyAchievementModel.makeKey(date: date, subjectId: subjectId)
+        let descriptor = FetchDescriptor<DailyAchievementModel>(
+            predicate: #Predicate { $0.key == key },
+            sortBy: []
+        )
+        let achieved = achievedMinutes >= max(requiredMinutes, 0)
+        do {
+            if let existing = try context.fetch(descriptor).first {
+                existing.requiredMinutes = requiredMinutes
+                existing.achievedMinutes = achievedMinutes
+                existing.achieved = achieved
+                existing.computedAt = Date()
+            } else {
+                let model = DailyAchievementModel(
+                    date: date,
+                    subjectId: subjectId,
+                    requiredMinutes: requiredMinutes,
+                    achievedMinutes: achievedMinutes,
+                    achieved: achieved,
+                    computedAt: Date()
+                )
+                context.insert(model)
+            }
+            try context.save()
+        } catch {
+            print("[StudySessionVM] 達成状況の保存エラー: \(error)")
+        }
+    }
+
+    private func calculateOverallStreakFromAchievements() -> Int {
+        guard let context = modelContext else { return 0 }
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+
+        func achievement(on date: Date) -> DailyAchievementModel? {
+            let key = DailyAchievementModel.makeKey(date: date, subjectId: nil)
+            let descriptor = FetchDescriptor<DailyAchievementModel>(
+                predicate: #Predicate { $0.key == key },
+                sortBy: []
+            )
+            return try? context.fetch(descriptor).first
+        }
+
+        let startDate: Date = {
+            if let rec = achievement(on: todayStart), rec.achieved {
+                return todayStart
+            } else {
+                return calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            }
+        }()
+
+        var date = startDate
+        var count = 0
+        for _ in 0..<365 {
+            guard let rec = achievement(on: date) else { break }
+            if rec.achieved {
+                count += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: date) else { break }
+                date = prev
+            } else {
+                break
+            }
+        }
+        return count
+    }
+
+    private func getTodaySubjectRequiredMinutes(subjectId: UUID) async -> Int {
+        guard let container = diContainer else { return 0 }
+        let scheduleVM = ScheduleViewModel(container: container)
+        await scheduleVM.loadData()
+        if let schedule = scheduleVM.getTodayActiveSchedule(),
+           let goal = schedule.subjectGoals.first(where: { $0.subjectId == subjectId && $0.isEnabled }) {
+            return goal.goalMinutes
+        }
+        return 0
     }
 }
 

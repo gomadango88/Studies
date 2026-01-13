@@ -76,12 +76,28 @@ struct StudySchedule: Identifiable, Codable {
 }
 
 struct SubjectGoal: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let subjectId: UUID
     let subjectName: String
     let subjectColor: CodableColor
     var goalMinutes: Int
     var isEnabled: Bool
+
+    init(
+        id: UUID = UUID(),
+        subjectId: UUID,
+        subjectName: String,
+        subjectColor: CodableColor,
+        goalMinutes: Int,
+        isEnabled: Bool
+    ) {
+        self.id = id
+        self.subjectId = subjectId
+        self.subjectName = subjectName
+        self.subjectColor = subjectColor
+        self.goalMinutes = goalMinutes
+        self.isEnabled = isEnabled
+    }
     
     var uiColor: Color {
         subjectColor.color
@@ -625,6 +641,10 @@ struct ScheduleEditorView: View {
     @State private var showingColorPicker = false
     @State private var showingConfirmationDialog = false
     @State private var initialSnapshot: ScheduleFormSnapshot? = nil
+    
+    @State private var showingDailyGoalWheel = false
+    @State private var tempDailyHours = 0
+    @State private var tempDailyMinutes = 0
 
     var body: some View {
         NavigationView {
@@ -640,12 +660,42 @@ struct ScheduleEditorView: View {
                     HStack {
                         Text("1日の目標時間")
                         Spacer()
-                        Picker("", selection: $dailyGoal) {
-                            ForEach(Array(stride(from: 1, through: 12, by: 1)), id: \.self) { hours in
-                                Text("\(hours) 時間").tag(hours * 60)
-                            }
+                        Button(action: { withAnimation { showingDailyGoalWheel.toggle() } }) {
+                            let hours = max(0, dailyGoal / 60)
+                            let minutes = max(0, dailyGoal % 60)
+                            Text(String(format: "%d時間%02d分", hours, minutes))
+                                .font(.body)
+                                .foregroundColor(showingDailyGoalWheel ? .accentColor : .primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule().fill(Color(.secondarySystemFill))
+                                )
                         }
-                        .pickerStyle(MenuPickerStyle())
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    
+                    if showingDailyGoalWheel {
+                        HStack {
+                            Spacer()
+                            TwoComponentTimePicker(hours: $tempDailyHours, minutes: $tempDailyMinutes)
+                                .frame(height: 160)
+                            Spacer()
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .onAppear {
+                            let clamped = max(0, dailyGoal)
+                            tempDailyHours = min(23, clamped / 60)
+                            let mins = clamped % 60
+                            tempDailyMinutes = (mins / 5) * 5
+                        }
+                        .onChange(of: tempDailyHours) { _, newVal in
+                            dailyGoal = newVal * 60 + tempDailyMinutes
+                        }
+                        .onChange(of: tempDailyMinutes) { _, newVal in
+                            dailyGoal = tempDailyHours * 60 + newVal
+                        }
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {
@@ -790,7 +840,7 @@ struct ScheduleEditorView: View {
                         Text("この新規スケジュールを破棄してもよろしいですか？")
                     }
                 }
-
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("保存", systemImage: "checkmark") { handleSave() }
                         .labelStyle(.iconOnly)
@@ -1119,7 +1169,8 @@ struct SubjectGoalEditorView: View {
             .onAppear {
                 if let initial = initialSubjectGoal {
                     selectedHours = max(0, min(23, initial.goalMinutes / 60))
-                    selectedMinutes = max(0, min(59, initial.goalMinutes % 60))
+                    let mins = max(0, min(59, initial.goalMinutes % 60))
+                    selectedMinutes = (mins / 5) * 5
                     if let found = availableSubjects.first(where: { $0.id == initial.subjectId }) {
                         selectedSubject = found
                     }
@@ -1134,20 +1185,21 @@ struct SubjectGoalEditorView: View {
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("追加", systemImage: "checkmark", action: {
-                                            if let subject = selectedSubject {
-                                                let subjectGoal = SubjectGoal(
-                                                    subjectId: subject.id,
-                                                    subjectName: subject.name,
-                                                    subjectColor: CodableColor(subject.color),
-                                                    goalMinutes: selectedHours * 60 + selectedMinutes,
-                                                    isEnabled: true
-                                                )
-                                                
-                                                onSave(subjectGoal)
-                                                dismiss()
-                                            }
-                                        })
+                    Button(initialSubjectGoal == nil ? "追加" : "保存", systemImage: "checkmark", action: {
+                        if let subject = selectedSubject {
+                            let subjectGoal = SubjectGoal(
+                                id: initialSubjectGoal?.id ?? UUID(),
+                                subjectId: subject.id,
+                                subjectName: subject.name,
+                                subjectColor: CodableColor(subject.color),
+                                goalMinutes: selectedHours * 60 + selectedMinutes,
+                                isEnabled: initialSubjectGoal?.isEnabled ?? true
+                            )
+                            
+                            onSave(subjectGoal)
+                            dismiss()
+                        }
+                    })
                     .labelStyle(.iconOnly)
                     .fontWeight(.semibold)
                     .disabled(selectedSubject == nil || (selectedHours == 0 && selectedMinutes == 0))

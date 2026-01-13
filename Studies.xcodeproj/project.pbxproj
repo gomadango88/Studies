@@ -12,6 +12,7 @@
 		F1AC87202E462A0600D93650 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F1AC87022E46284200D93650 /* SwiftUI.framework */; };
 		F1AC87312E462A0800D93650 /* StudiesLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F1AC871E2E462A0600D93650 /* StudiesLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		F1C69ECC2E5A1EDF00047620 /* Combine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F13098A12E55E6580097DBD6 /* Combine.framework */; };
+		F1F772FA2F15431A00D9AF79 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = F1F772F92F15431A00D9AF79 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 		F1AC87022E46284200D93650 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		F1AC871E2E462A0600D93650 /* StudiesLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StudiesLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F1C69ECA2E5A1D3E00047620 /* FoundationModels.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FoundationModels.framework; path = System/Library/Frameworks/FoundationModels.framework; sourceTree = SDKROOT; };
+		F1F772F92F15431A00D9AF79 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -219,6 +221,7 @@
 				F1AC86FF2E46284200D93650 /* Frameworks */,
 				F1AC86702E459BBB00D93650 /* Products */,
 				F1A6859D2E50B2B0001D1F54 /* StudiesWidget */,
+				F1F772F92F15431A00D9AF79 /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -395,6 +398,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1F772FA2F15431A00D9AF79 /* README.md in Resources */,
 				F1A69D0B2E4A66B40073DAC2 /* StudiesIcon 2.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

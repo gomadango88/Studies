@@ -27,7 +27,8 @@ class DIContainer {
                         
             let schema = Schema([
                 SubjectModel.self,
-                StudyRecordModel.self
+                StudyRecordModel.self,
+                DailyAchievementModel.self
             ])
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
