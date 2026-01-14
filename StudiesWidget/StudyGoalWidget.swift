@@ -127,7 +127,7 @@ struct StudyGoalWidgetEntryView: View {
                     }
                     
                     if entry.streakDays > 0 {
-                        Text("🔥 \(entry.streakDays)日連続")
+                        Text("目標達成: \(entry.streakDays)日連続")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.orange)
                     }
@@ -200,7 +200,7 @@ struct StudyGoalWidgetEntryView: View {
                     
                     Spacer()
                     
-                    Text("🔥 \(entry.streakDays) 日連続")
+                    Text("目標達成: \(entry.streakDays)日連続")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.orange)
@@ -308,9 +308,7 @@ struct StudyGoalWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: StudyGoalProvider()) { entry in
             StudyGoalWidgetEntryView(entry: entry)
-                .containerBackground(for: .widget) {
-                    Color.clear
-                }
+                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("今日の学習目標")
         .description("今日の学習目標の進捗を表示します。")
@@ -365,3 +363,4 @@ struct StudyGoalWidget: Widget {
         hasValidGoal: false
     )
 }
+

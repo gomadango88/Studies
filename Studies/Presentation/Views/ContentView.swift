@@ -198,18 +198,20 @@ struct WidgetUpdateService {
             dailyGoal = 0
         }
 
-        // 3) 連続日数
-        let streakDays: Int
-        do {
-            let days = try await studyRecordUseCase.getOverallConsecutiveStudyDays()
-            streakDays = days
-            
-        } catch {
-            print("WidgetUpdateService: streak error: \(error)")
-            streakDays = 0
+        // 3) コンテキストと日付を定義
+        let context = container.modelContainer.mainContext
+        let todayStart = Calendar.current.startOfDay(for: Date())
+        
+        // 3) 達成状況のアップサート（条件付き）
+        // 有効スケジュールがある日、または今日に学習がある日のみ記録をアップサート
+        if dailyGoal > 0 || totalTodayMinutes > 0 {
+            upsertOverallAchievement(context: context, date: todayStart, requiredMinutes: dailyGoal, achievedMinutes: totalTodayMinutes)
         }
 
-        // 4) 保存してリロード
+        // 4) 連続日数（目標達成ベース）
+        let streakDays = calculateOverallStreakFromAchievements(context: context)
+
+        // 5) 保存してリロード
         let data = WidgetStudyGoalData(
             dailyGoal: dailyGoal,
             todayMinutes: totalTodayMinutes,
@@ -220,9 +222,76 @@ struct WidgetUpdateService {
         WidgetCenter.shared.reloadAllTimelines()
         print("WidgetUpdateService: finished update")
     }
+
+    private static func upsertOverallAchievement(context: ModelContext, date: Date, requiredMinutes: Int, achievedMinutes: Int) {
+        let key = DailyAchievementModel.makeKey(date: date, subjectId: nil)
+        let descriptor = FetchDescriptor<DailyAchievementModel>(
+            predicate: #Predicate { $0.key == key },
+            sortBy: []
+        )
+        let achieved = achievedMinutes >= max(requiredMinutes, 0)
+        do {
+            if let existing = try context.fetch(descriptor).first {
+                existing.requiredMinutes = requiredMinutes
+                existing.achievedMinutes = achievedMinutes
+                existing.achieved = achieved
+                existing.computedAt = Date()
+            } else {
+                let model = DailyAchievementModel(
+                    date: date,
+                    subjectId: nil,
+                    requiredMinutes: requiredMinutes,
+                    achievedMinutes: achievedMinutes,
+                    achieved: achieved,
+                    computedAt: Date()
+                )
+                context.insert(model)
+            }
+            try context.save()
+        } catch {
+            print("[WidgetUpdateService] upsertOverallAchievement error: \(error)")
+        }
+    }
+
+    private static func calculateOverallStreakFromAchievements(context: ModelContext) -> Int {
+        let calendar = Calendar.current
+        let todayStart = calendar.startOfDay(for: Date())
+
+        func achievement(on date: Date) -> DailyAchievementModel? {
+            let key = DailyAchievementModel.makeKey(date: date, subjectId: nil)
+            let descriptor = FetchDescriptor<DailyAchievementModel>(
+                predicate: #Predicate { $0.key == key },
+                sortBy: []
+            )
+            return try? context.fetch(descriptor).first
+        }
+
+        let startDate: Date = {
+            if let rec = achievement(on: todayStart), rec.achieved {
+                return todayStart
+            } else {
+                return calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
+            }
+        }()
+
+        var date = startDate
+        var count = 0
+        for _ in 0..<365 {
+            guard let rec = achievement(on: date) else { break }
+            if rec.achieved {
+                count += 1
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: date) else { break }
+                date = prev
+            } else {
+                break
+            }
+        }
+        return count
+    }
 }
 
 #Preview {
     ContentView()
         .environment(DIContainer.shared)
 }
+

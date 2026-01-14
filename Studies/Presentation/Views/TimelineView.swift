@@ -16,15 +16,12 @@ struct TimelineView: View {
     @State private var recordToDelete: StudyRecord?
     @State private var showingDeleteAlert = false
     
-    // パフォーマンス最適化用
-    @State private var isContextMenuReady = false
-    
     init() {
         self._viewModel = State(wrappedValue: TimelineViewModel())
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 if viewModel.isLoading {
                     loadingView
@@ -40,8 +37,6 @@ struct TimelineView: View {
                 viewModel.setContainer(diContainer)
                 Task {
                     await viewModel.loadAllRecords()
-                    // データ読み込み完了後にコンテキストメニューを準備
-                    isContextMenuReady = true
                 }
             }
             // 削除確認アラート
@@ -65,6 +60,7 @@ struct TimelineView: View {
             } message: { record in
                 Text("この学習記録を削除します。\nこの操作は取り消せません。")
             }
+            .background(backdrop)
         }
     }
     
@@ -73,7 +69,24 @@ struct TimelineView: View {
         print("📱 Updating widget after timeline record deletion via WidgetUpdateService...")
         await WidgetUpdateService.update(using: diContainer)
     }
-
+    
+    
+    private var backdrop: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(.systemGroupedBackground), Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            LinearGradient(
+                colors: [Color.blue.opacity(0.12), Color.purple.opacity(0.12)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .blur(radius: 80)
+        }
+        .ignoresSafeArea()
+    }
     
     // MARK: - Views
     
@@ -90,9 +103,10 @@ struct TimelineView: View {
     
     private var emptyStateView: some View {
         VStack(spacing: 20) {
-            Image(systemName: "clock.badge.questionmark")
+            Image(systemName: "books.vertical")
+                .symbolRenderingMode(.hierarchical)
                 .font(.system(size: 60))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             
             Text("学習記録がありません")
                 .font(.title2)
@@ -108,34 +122,32 @@ struct TimelineView: View {
     }
     
     private var optimizedTimelineScrollView: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(viewModel.groupedRecords, id: \.date) { group in
-                    Section {
-                        LazyVStack(spacing: 8) {
-                            ForEach(group.records) { record in
-                                OptimizedTimelineRecordCard(
-                                    record: record,
-                                    subject: viewModel.subjects.first { $0.id == record.subjectId },
-                                    isContextMenuReady: isContextMenuReady,
-                                    onDelete: {
-                                        recordToDelete = record
-                                        showingDeleteAlert = true
-                                    }
-                                )
+        List {
+            ForEach(viewModel.groupedRecords, id: \.date) { group in
+                Group {
+                    TimelineDateHeader(date: group.date)
+                        .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .background(Color.clear)
+
+                    ForEach(group.records) { record in
+                        OptimizedTimelineRecordCard(
+                            record: record,
+                            subject: viewModel.subjects.first { $0.id == record.subjectId },
+                            onDelete: {
+                                recordToDelete = record
+                                showingDeleteAlert = true
                             }
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 20)
-                    } header: {
-                        TimelineDateHeader(date: group.date)
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .background(Color.clear)
                     }
                 }
-                
-                // 底部のスペース
-                Color.clear.frame(height: 20)
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 }
 
@@ -145,42 +157,31 @@ struct TimelineDateHeader: View {
     let date: Date
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
                 Text(date.formatted(.dateTime.month().day()))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                
-                Text(date.formatted(.dateTime.weekday(.wide)))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+
+                if date.isToday {
+                    Text("今日")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.blue)
+                } else if Calendar.current.isDateInYesterday(date) {
+                    Text("昨日")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.gray)
+                }
+
+                Spacer()
             }
-            
-            Spacer()
-            
-            if date.isToday {
-                Text("今日")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue)
-                    .cornerRadius(8)
-            } else if Calendar.current.isDateInYesterday(date) {
-                Text("昨日")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.gray)
-                    .cornerRadius(8)
-            }
+
+            Text(date.formatted(.dateTime.weekday(.wide)))
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(Color(.systemBackground))
+        .padding(.top, 16)
+        .padding(.bottom, 8)
     }
 }
 
@@ -189,12 +190,10 @@ struct TimelineDateHeader: View {
 struct OptimizedTimelineRecordCard: View {
     let record: StudyRecord
     let subject: Subject?
-    let isContextMenuReady: Bool
     let onDelete: () -> Void
     
     // パフォーマンス最適化用のキャッシュ
     @State private var cachedDurationText: String = ""
-    @State private var isLongPressing = false
     
     var body: some View {
         HStack(spacing: 12) {
@@ -205,117 +204,75 @@ struct OptimizedTimelineRecordCard: View {
             recordCardContent
         }
         .padding(.leading, 12)
-        .scaleEffect(isLongPressing ? 0.98 : 1.0)
-        .animation(.easeInOut(duration: 0.1), value: isLongPressing)
         .onAppear {
             // 表示時に一度だけ時間フォーマットを計算してキャッシュ
             if cachedDurationText.isEmpty {
                 cachedDurationText = formatDuration(record.duration)
             }
         }
-        // 最適化されたコンテキストメニュー
-        .contextMenu {
-            if isContextMenuReady {
-                contextMenuContent
-            }
-        } preview: {
-            if isContextMenuReady {
-                OptimizedTimelineRecordPreview(
-                    record: record,
-                    subject: subject,
-                    cachedDurationText: cachedDurationText
-                )
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                onDelete()
+            } label: {
+                Label("削除", systemImage: "trash")
             }
         }
-        // 長押し状態の視覚フィードバック
-        .onLongPressGesture(
-            minimumDuration: 0.3,
-            maximumDistance: 10,
-            perform: {},
-            onPressingChanged: { pressing in
-                withAnimation(.easeInOut(duration: 0.1)) {
-                    isLongPressing = pressing
-                }
-            }
-        )
     }
     
     
     private var timelineDot: some View {
-        VStack {
+        VStack(spacing: 0) {
             Circle()
                 .fill(subject?.color ?? Color.gray)
                 .frame(width: 8, height: 8)
-            
+
             Rectangle()
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 2)
+                .fill(Color.gray.opacity(0.25))
+                .frame(width: 1)
                 .frame(maxHeight: .infinity)
         }
-        .frame(height: 60)
+        .frame(height: 56)
     }
     
     private var recordCardContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                // 教材情報
-                HStack(spacing: 8) {
-                    if let subject = subject {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(subject.color)
-                            .frame(width: 4, height: 20)
-                        
-                        Text(subject.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    } else {
-                        Text("削除された教材")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                    }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                if let subject = subject {
+                    Text(subject.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                } else {
+                    Text("削除された教材")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
-                // キャッシュされた学習時間
+
                 Text(cachedDurationText)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            
-            // 時刻表示
-            HStack {
+
+            HStack(spacing: 6) {
                 Image(systemName: "clock")
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                
+
                 Text(record.studyDate.formatted(date: .omitted, time: .shortened))
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
+        .padding(.trailing, 12)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(.systemGray5), lineWidth: 1)
+            Divider().opacity(0.25),
+            alignment: .bottom
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-    }
-    
-    @ViewBuilder
-    private var contextMenuContent: some View {
-        Button {
-            onDelete()
-        } label: {
-            Label("削除", systemImage: "trash")
-        }
-        .foregroundColor(.red)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -331,94 +288,8 @@ struct OptimizedTimelineRecordCard: View {
         }
     }
 }
-
-// MARK: - Optimized Context Menu Preview
-
-struct OptimizedTimelineRecordPreview: View {
-    let record: StudyRecord
-    let subject: Subject?
-    let cachedDurationText: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 教材情報
-            HStack {
-                if let subject = subject {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(subject.color)
-                        .frame(width: 4, height: 40)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(subject.name)
-                            .font(.headline)
-                            .fontWeight(.bold)
-                        
-                        Text("学習記録")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray)
-                        .frame(width: 4, height: 40)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("削除された教材")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        Text("学習記録")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
-            }
-            
-            Divider()
-            
-            // 詳細情報（キャッシュされたテキストを使用）
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Image(systemName: "clock.fill")
-                        .foregroundColor(.blue)
-                    
-                    Text("学習時間")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Text(cachedDurationText)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-                
-                HStack {
-                    Image(systemName: "calendar")
-                        .foregroundColor(.green)
-                    
-                    Text("記録日時")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    Text(record.studyDate.formatted(date: .abbreviated, time: .shortened))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .frame(width: 250)
-    }
-}
-
 #Preview {
     TimelineView()
         .environment(DIContainer.shared)
 }
+

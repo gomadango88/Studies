@@ -329,7 +329,19 @@ struct StudyTimeCharts: View {
     @ViewBuilder
     private func createChart() -> some View {
         let selectedBucketDate = selectedDate.map { normalizedBucketDate(for: $0) }
-        Chart(rows) { row in
+        let sortedRowsForChart = rows.sorted { lhs, rhs in
+            if lhs.bucketDate != rhs.bucketDate {
+                return lhs.bucketDate < rhs.bucketDate
+            }
+            if lhs.durationMinutes != rhs.durationMinutes {
+                return lhs.durationMinutes > rhs.durationMinutes
+            }
+            if lhs.subjectName != rhs.subjectName {
+                return lhs.subjectName < rhs.subjectName
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+        Chart(sortedRowsForChart) { row in
             BarMark(
                 x: .value("Period", row.bucketDate, unit: span.xUnit),
                 y: .value("Minutes", row.durationMinutes)
