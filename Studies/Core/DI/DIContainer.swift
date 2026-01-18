@@ -28,7 +28,9 @@ class DIContainer {
             let schema = Schema([
                 SubjectModel.self,
                 StudyRecordModel.self,
-                DailyAchievementModel.self
+                DailyAchievementModel.self,
+                StudyScheduleModel.self,
+                SubjectGoalModel.self
             ])
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
@@ -63,6 +65,14 @@ class DIContainer {
             _studyRecordRepository = StudyRecordRepository(modelContainer: modelContainer)
         }
         return _studyRecordRepository!
+    }
+    
+    private var _scheduleRepository: ScheduleRepositoryProtocol?
+    var scheduleRepository: ScheduleRepositoryProtocol {
+        if _scheduleRepository == nil {
+            _scheduleRepository = ScheduleRepository(modelContainer: modelContainer)
+        }
+        return _scheduleRepository!
     }
     
     // MARK: - Use Cases

@@ -8,6 +8,7 @@
 import SwiftUI
 import WidgetKit
 import UIKit
+import SwiftData
 
 // MARK: - Helper Functions
 
@@ -110,6 +111,13 @@ struct CodableColor: Codable, Equatable {
     let blue: Double
     let alpha: Double
     
+    init(red: Double, green: Double, blue: Double, alpha: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.alpha = alpha
+    }
+    
     var color: Color {
         Color(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
     }
@@ -168,112 +176,105 @@ enum Weekday: Int, CaseIterable, Identifiable, Codable {
 @Observable
 class ScheduleViewModel {
     private let container: DIContainer
+    private var repository: ScheduleRepositoryProtocol
     var schedules: [StudySchedule] = []
     var subjects: [Subject] = []
     
     init(container: DIContainer) {
         self.container = container
+        self.repository = container.scheduleRepository
     }
     
     @MainActor
     func loadData() async {
         do {
             subjects = try await container.subjectUseCase.getAllSubjects()
-            loadSchedules()
+            await loadSchedules()
         } catch {
             print("データ読み込みエラー: \(error)")
         }
     }
     
-    private func loadSchedules() {
-        if let data = UserDefaults.standard.data(forKey: "StudySchedules"),
-           let savedSchedules = try? JSONDecoder().decode([StudySchedule].self, from: data) {
-            schedules = savedSchedules
-        } else {
-            createDefaultSchedules()
+    @MainActor
+    private func loadSchedules() async {
+        await migrateFromUserDefaultsIfNeeded()
+        do {
+            schedules = try await repository.fetchAll()
+        } catch {
+            print("スケジュール読み込みエラー: \(error)")
+            schedules = []
         }
     }
     
-    func saveSchedules() {
-        if let data = try? JSONEncoder().encode(schedules) {
-            UserDefaults.standard.set(data, forKey: "StudySchedules")
-        }
-    }
-    
-    private func createDefaultSchedules() {
-        let defaultSchedule = StudySchedule(
-            name: "基本スケジュール",
-            dailyGoalMinutes: 120,
-            selectedWeekdays: [.monday, .tuesday, .wednesday, .thursday, .friday],
-            isEnabled: true,
-            color: CodableColor(.blue),
-            subjectGoals: [],
-            priority: 3
-        )
-        
-        schedules = [defaultSchedule]
-        saveSchedules()
-    }
+    private func saveSchedules() { /* SwiftData manages persistence */ }
     
     // スケジュール保存時にウィジェット更新
     func saveSchedule(_ schedule: StudySchedule) {
-        if let index = schedules.firstIndex(where: { $0.id == schedule.id }) {
-            schedules[index] = schedule
-        } else {
-            schedules.append(schedule)
-        }
-        
-        saveSchedules()
-        
-        // ウィジェット更新
         Task {
-            await updateWidgetAfterScheduleChange()
+            do {
+                await MainActor.run { }
+                try await repository.upsert(schedule)
+                schedules = try await repository.fetchAll()
+                await updateWidgetAfterScheduleChange()
+            } catch {
+                print("スケジュール保存エラー: \(error)")
+            }
         }
     }
     
     // スケジュール削除時にウィジェット更新
     func deleteSchedule(atOffsets offsets: IndexSet) {
-        schedules.remove(atOffsets: offsets)
-        saveSchedules()
-        
-        // ウィジェット更新
+        let ids = offsets.compactMap { schedules[$0].id }
         Task {
-            await updateWidgetAfterScheduleChange()
+            do {
+                for id in ids {
+                    try await repository.delete(id)
+                }
+                schedules = try await repository.fetchAll()
+                await updateWidgetAfterScheduleChange()
+            } catch {
+                print("スケジュール削除エラー: \(error)")
+            }
         }
     }
     
     // スケジュール削除時にウィジェット更新
     func deleteSchedule(at index: Int) {
         guard index < schedules.count else { return }
-        schedules.remove(at: index)
-        saveSchedules()
-        
-        // ウィジェット更新
+        let id = schedules[index].id
         Task {
-            await updateWidgetAfterScheduleChange()
+            do {
+                try await repository.delete(id)
+                schedules = try await repository.fetchAll()
+                await updateWidgetAfterScheduleChange()
+            } catch {
+                print("スケジュール削除エラー: \(error)")
+            }
         }
     }
     
     // スケジュール削除時にウィジェット更新
     func deleteSchedule(withId id: UUID) {
-        schedules.removeAll { $0.id == id }
-        saveSchedules()
-        
-        // ウィジェット更新
         Task {
-            await updateWidgetAfterScheduleChange()
+            do {
+                try await repository.delete(id)
+                schedules = try await repository.fetchAll()
+                await updateWidgetAfterScheduleChange()
+            } catch {
+                print("スケジュール削除エラー: \(error)")
+            }
         }
     }
     
     // スケジュール有効化/無効化時にウィジェット更新
     func toggleSchedule(withId id: UUID) {
-        if let index = schedules.firstIndex(where: { $0.id == id }) {
-            schedules[index].isEnabled.toggle()
-            saveSchedules()
-            
-            // ウィジェット更新
-            Task {
+        Task {
+            do {
+                try await repository.toggleEnabled(id)
+                schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
+            } catch {
+                print("スケジュール更新エラー: \(error)")
             }
         }
     }
@@ -297,6 +298,37 @@ class ScheduleViewModel {
     private func updateWidgetAfterScheduleChange() async {
         print("Updating widget after schedule change via WidgetUpdateService...")
         await WidgetUpdateService.update(using: container)
+    }
+    
+    @MainActor
+    private func migrateFromUserDefaultsIfNeeded() async {
+        let migratedKey = "StudySchedulesMigrated"
+        if UserDefaults.standard.bool(forKey: migratedKey) { return }
+
+        do {
+            let existing = try await repository.fetchAll()
+            if !existing.isEmpty {
+                UserDefaults.standard.set(true, forKey: migratedKey)
+                return
+            }
+        } catch { }
+
+        guard let data = UserDefaults.standard.data(forKey: "StudySchedules") else {
+            UserDefaults.standard.set(true, forKey: migratedKey)
+            return
+        }
+        do {
+            let old = try JSONDecoder().decode([StudySchedule].self, from: data)
+            for s in old {
+                try await repository.upsert(s)
+            }
+            UserDefaults.standard.set(true, forKey: migratedKey)
+            // Optionally clear old data
+            // UserDefaults.standard.removeObject(forKey: "StudySchedules")
+        } catch {
+            print("旧スケジュールの移行失敗: \(error)")
+            UserDefaults.standard.set(true, forKey: migratedKey)
+        }
     }
 }
 

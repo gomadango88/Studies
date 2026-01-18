@@ -22,29 +22,6 @@ struct StatisticsView: View {
             .navigationTitle("統計")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // データ管理メニュー（バックアップ・復元を1つにまとめる）
-                ToolbarItem{
-                    Menu {
-                        Button {
-                            showBackupView = true
-                        } label: {
-                            Label("バックアップ", systemImage: "externaldrive.badge.plus")
-                        }
-                        
-                        Button {
-                            showRestoreView = true
-                        } label: {
-                            Label("データを復元", systemImage: "externaldrive.badge.timemachine")
-                        }
-                    } label: {
-                        Image(systemName: "arrow.trianglehead.counterclockwise.rotate.90")
-                            .font(.title3)
-                            
-                    }
-                    .accessibilityLabel("データ管理メニュー")
-                    
-                }
-                
                 
                 ToolbarSpacer()
                 
