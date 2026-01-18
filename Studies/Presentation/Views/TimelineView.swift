@@ -16,6 +16,9 @@ struct TimelineView: View {
     @State private var recordToDelete: StudyRecord?
     @State private var showingDeleteAlert = false
     
+    // 手動追加シート表示
+    @State private var showingManualAddSheet = false
+    
     init() {
         self._viewModel = State(wrappedValue: TimelineViewModel())
     }
@@ -33,6 +36,18 @@ struct TimelineView: View {
             }
             .navigationTitle("学習履歴")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        HapticFeedback.selection()
+                        showingManualAddSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .disabled(viewModel.subjects.isEmpty)
+                    .accessibilityLabel("手動で記録を追加")
+                }
+            }
             .onAppear {
                 viewModel.setContainer(diContainer)
                 Task {
@@ -46,7 +61,7 @@ struct TimelineView: View {
                         await viewModel.deleteRecord(record)
                         
                         // 🔥 変更: ウィジェット更新は集中サービス経由
-                        await updateWidgetAfterDeletion()
+                        await updateWidgets()
                         
                         // 削除成功時の触覚フィードバック
                         HapticFeedback.success()
@@ -60,13 +75,22 @@ struct TimelineView: View {
             } message: { record in
                 Text("この学習記録を削除します。\nこの操作は取り消せません。")
             }
+            .sheet(isPresented: $showingManualAddSheet) {
+                ManualRecordSheet(subjects: viewModel.subjects) { subjectId, date, duration in
+                    Task {
+                        await viewModel.addRecord(subjectId: subjectId, studyDate: date, duration: duration)
+                        await updateWidgets()
+                        HapticFeedback.success()
+                    }
+                }
+            }
             .background(backdrop)
         }
     }
     
     // MARK: - ウィジェット更新メソッド
-    private func updateWidgetAfterDeletion() async {
-        print("📱 Updating widget after timeline record deletion via WidgetUpdateService...")
+    private func updateWidgets() async {
+        print("📱 Updating widgets after timeline change via WidgetUpdateService...")
         await WidgetUpdateService.update(using: diContainer)
     }
     
@@ -288,6 +312,83 @@ struct OptimizedTimelineRecordCard: View {
         }
     }
 }
+
+// MARK: - Manual Record Sheet
+struct ManualRecordSheet: View {
+    let subjects: [Subject]
+    let onSave: (UUID, Date, TimeInterval) -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var selectedSubjectId: UUID?
+    @State private var selectedDate: Date = Date()
+    @State private var hours: Int = 0
+    @State private var minutes: Int = 0
+    
+    private var endOfToday: Date {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: Date())
+        return calendar.date(byAdding: DateComponents(day: 1, second: -1), to: start) ?? Date()
+    }
+    
+    private var canSave: Bool {
+        guard let _ = selectedSubjectId else { return false }
+        return (hours * 60 + minutes) > 0
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("教材") {
+                    if subjects.isEmpty {
+                        Text("教材がありません。先に教材を作成してください。")
+                            .foregroundColor(.secondary)
+                    } else {
+                        Picker("教材を選択", selection: $selectedSubjectId) {
+                            ForEach(subjects, id: \.id) { subject in
+                                Text(subject.name).tag(Optional(subject.id))
+                            }
+                        }
+                    }
+                }
+                
+                Section("日時") {
+                    DatePicker("学習日時", selection: $selectedDate, in: ...endOfToday, displayedComponents: [.date, .hourAndMinute])
+                        .environment(\.locale, Locale(identifier: "ja_JP"))
+                }
+                
+                Section("学習時間") {
+                    HStack {
+                        Spacer()
+                        TwoComponentTimePicker(hours: $hours, minutes: $minutes, minuteStep: 1)
+                            .frame(height: 160)
+                        Spacer()
+                    }
+                }
+            }
+            .navigationTitle("手動で追加")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        if let subjectId = selectedSubjectId {
+                            let duration = TimeInterval(hours * 3600 + minutes * 60)
+                            onSave(subjectId, selectedDate, duration)
+                            dismiss()
+                        }
+                    }
+                    .disabled(!canSave)
+                }
+            }
+            .onAppear {
+                if selectedSubjectId == nil { selectedSubjectId = subjects.first?.id }
+            }
+        }
+    }
+}
+
 #Preview {
     TimelineView()
         .environment(DIContainer.shared)

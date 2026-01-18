@@ -1052,9 +1052,10 @@ struct SubjectGoalRow: View {
 struct TwoComponentTimePicker: UIViewRepresentable {
     @Binding var hours: Int
     @Binding var minutes: Int
+    var minuteStep: Int = 5
 
     private let hoursRange = Array(0..<24)
-    private let minutesRange = Array(stride(from: 0, through: 55, by: 5))
+    private var minutesRange: [Int] { Array(stride(from: 0, through: 59, by: minuteStep)) }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -1086,8 +1087,8 @@ struct TwoComponentTimePicker: UIViewRepresentable {
     }
 
     private func normalizedMinutes(_ value: Int) -> Int {
-        let clamped = max(0, min(55, value))
-        return (clamped / 5) * 5
+        let clamped = max(0, min(59, value))
+        return (clamped / max(1, minuteStep)) * max(1, minuteStep)
     }
 
     class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {

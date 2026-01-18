@@ -253,8 +253,22 @@ struct StudySessionView: View {
     
     private var timeInputSection: some View {
         return VStack(alignment: .leading, spacing: 12) {
-            Text("学習時間を入力")
-                .font(.headline)
+            HStack{
+                Text("学習時間を入力")
+                    .font(.headline)
+                if (viewModel.inputHours > 0 || viewModel.inputMinutes > 0) && efficientStopwatchManager.elapsedTime > 0 {
+                    let inputSeconds = TimeInterval(viewModel.inputHours * 3600 + viewModel.inputMinutes * 60)
+                    let totalSeconds = inputSeconds + efficientStopwatchManager.elapsedTime
+                    let totalHours = Int(totalSeconds) / 3600
+                    let totalMinutes = (Int(totalSeconds) % 3600) / 60
+
+                    Text("合計: \(totalHours)時間\(totalMinutes)分")
+                        .font(.subheadline)
+                        .foregroundColor(.blue)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 2)
+                }
+            }
             
             HStack {
                 Spacer()
@@ -263,14 +277,7 @@ struct StudySessionView: View {
                 Spacer()
             }
             
-            if viewModel.inputHours > 0 || viewModel.inputMinutes > 0 {
-                Text("選択中: \(viewModel.inputHours)時間\(viewModel.inputMinutes)分")
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.top, 8)
-            }
-        }
+                    }
         .padding()
         .background(Color.gray.opacity(0.1))
         .cornerRadius(26)

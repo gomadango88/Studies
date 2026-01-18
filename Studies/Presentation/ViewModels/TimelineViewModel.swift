@@ -82,6 +82,24 @@ class TimelineViewModel {
         }
     }
 
+    // 手動追加用の作成メソッド
+    func addRecord(subjectId: UUID, studyDate: Date, duration: TimeInterval) async {
+        guard let studyRecordUseCase = studyRecordUseCase else {
+            print("StudyRecordUseCase is nil")
+            return
+        }
+        do {
+            _ = try await studyRecordUseCase.createRecord(
+                subjectId: subjectId,
+                duration: duration,
+                studyDate: studyDate
+            )
+            // UI更新のため再読み込み
+            await loadAllRecords()
+        } catch {
+            print("Error creating record: \(error)")
+        }
+    }
     
     private func groupRecordsByDate() {
         let calendar = Calendar.current
@@ -108,3 +126,4 @@ struct TimelineGroup {
     let date: Date
     let records: [StudyRecord]
 }
+
