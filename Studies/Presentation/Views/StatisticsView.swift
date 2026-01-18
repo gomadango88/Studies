@@ -35,7 +35,10 @@ struct StatisticsView: View {
                     .accessibilityLabel("学習記録一覧")
                 }
             }
+            .background(Color(.systemGroupedBackground))
         }
+        .background(Color(.systemGroupedBackground))
+        .ignoresSafeArea(.container, edges: .top)
         .sheet(isPresented: $showStudyRecordList) {
             StudyRecordListView()
         }
