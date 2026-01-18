@@ -149,23 +149,27 @@ struct TimelineView: View {
         List {
             ForEach(viewModel.groupedRecords, id: \.date) { group in
                 Group {
-                    TimelineDateHeader(date: group.date)
-                        .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
-                        .listRowSeparator(.hidden)
-                        .background(Color.clear)
+                    CenteredRow(maxWidth: 640) {
+                        TimelineDateHeader(date: group.date)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
 
                     ForEach(group.records) { record in
-                        OptimizedTimelineRecordCard(
-                            record: record,
-                            subject: viewModel.subjects.first { $0.id == record.subjectId },
-                            onDelete: {
-                                recordToDelete = record
-                                showingDeleteAlert = true
-                            }
-                        )
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        CenteredRow(maxWidth: 640) {
+                            OptimizedTimelineRecordCard(
+                                record: record,
+                                subject: viewModel.subjects.first { $0.id == record.subjectId },
+                                onDelete: {
+                                    recordToDelete = record
+                                    showingDeleteAlert = true
+                                }
+                            )
+                        }
+                        .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
-                        .background(Color.clear)
+                        .listRowBackground(Color.clear)
                     }
                 }
             }
@@ -228,6 +232,7 @@ struct OptimizedTimelineRecordCard: View {
             recordCardContent
         }
         .padding(.leading, 12)
+        .padding(.vertical, 6)
         .onAppear {
             // 表示時に一度だけ時間フォーマットを計算してキャッシュ
             if cachedDurationText.isEmpty {
@@ -292,11 +297,12 @@ struct OptimizedTimelineRecordCard: View {
                 Spacer()
             }
         }
-        .padding(.trailing, 12)
-        .overlay(
-            Divider().opacity(0.25),
-            alignment: .bottom
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
         )
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -310,6 +316,28 @@ struct OptimizedTimelineRecordCard: View {
         } else {
             return "1分未満"
         }
+    }
+}
+
+// MARK: - Layout Helpers
+private struct CenteredRow<Content: View>: View {
+    let maxWidth: CGFloat
+    @ViewBuilder let content: Content
+
+    init(maxWidth: CGFloat = 600, @ViewBuilder content: () -> Content) {
+        self.maxWidth = maxWidth
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            content
+                .frame(maxWidth: maxWidth)
+                .padding(.horizontal, 16)
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
     }
 }
 
