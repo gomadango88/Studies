@@ -53,8 +53,6 @@ struct AddSubjectView: View {
                             .onSubmit { attemptSave() }
                     }
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                } header: {
-                    Text("基本設定")
                 } footer: {
                     if viewModel.subjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text("教材名を入力してください")
@@ -88,6 +86,11 @@ struct AddSubjectView: View {
                     .padding(.vertical, 8)
                 } header: {
                     Text("色")
+                }
+                
+                Section {
+                    Toggle("ピン留めする", isOn: $viewModel.isPinned)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
                 
                 Section {

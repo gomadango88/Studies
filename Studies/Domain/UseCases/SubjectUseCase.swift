@@ -21,7 +21,7 @@ class SubjectUseCase: SubjectUseCaseProtocol {
         return subjects.sorted { $0.sortOrder < $1.sortOrder }
     }
     
-    func createSubject(name: String, color: Color) async throws -> Subject {
+    func createSubject(name: String, color: Color, isPinned: Bool) async throws -> Subject {
         let validation = validateSubjectName(name)
         guard validation == .valid else {
             throw SubjectUseCaseError.validationFailed(validation)
@@ -33,7 +33,8 @@ class SubjectUseCase: SubjectUseCaseProtocol {
         let newSubject = Subject(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             color: color,
-            sortOrder: maxSortOrder + 1
+            sortOrder: maxSortOrder + 1,
+            isPinned: isPinned
         )
         
         try await repository.save(newSubject)

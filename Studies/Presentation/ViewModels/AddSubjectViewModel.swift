@@ -18,6 +18,7 @@ class AddSubjectViewModel {
     
     var subjectName = ""
     var selectedColor: Color = .blue
+    var isPinned = false
     var isSaving = false
     var errorMessage: String?
     
@@ -34,7 +35,8 @@ class AddSubjectViewModel {
         do {
             _ = try await useCase.createSubject(
                 name: subjectName.trimmingCharacters(in: .whitespacesAndNewlines),
-                color: selectedColor
+                color: selectedColor,
+                isPinned: isPinned
             )
             isSaving = false  // ← この行を追加
             return true
@@ -49,3 +51,4 @@ class AddSubjectViewModel {
         }
     }
 }
+

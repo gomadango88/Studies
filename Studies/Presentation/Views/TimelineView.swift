@@ -397,16 +397,18 @@ struct ManualRecordSheet: View {
             .navigationTitle("手動で追加")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") { dismiss() }
+                    Button("キャンセル", systemImage: "xmark") { dismiss() }
+                        .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") {
+                    Button("保存", systemImage: "checkmark") {
                         if let subjectId = selectedSubjectId {
                             let duration = TimeInterval(hours * 3600 + minutes * 60)
                             onSave(subjectId, selectedDate, duration)
                             dismiss()
                         }
                     }
+                    .labelStyle(.iconOnly)
                     .disabled(!canSave)
                 }
             }

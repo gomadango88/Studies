@@ -11,7 +11,7 @@ import SwiftUI
 
 protocol SubjectUseCaseProtocol {
     func getAllSubjects() async throws -> [Subject]
-    func createSubject(name: String, color: Color) async throws -> Subject
+    func createSubject(name: String, color: Color, isPinned: Bool) async throws -> Subject
     func updateSubject(_ subject: Subject) async throws
     func deleteSubject(_ subject: Subject) async throws
     func reorderSubjects(_ subjects: [Subject]) async throws
