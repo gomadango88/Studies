@@ -377,7 +377,7 @@ struct StudyTimeCharts: View {
                 chartSelectionOverlay(proxy: proxy, geometry: geo)
             }
         }
-        .onChange(of: selectedDate) { newValue in
+        .onChange(of: selectedDate) { _, newValue in
             if let newValue {
                 let bucket = normalizedBucketDate(for: newValue)
                 if lastHapticBucketDate != bucket {
@@ -493,9 +493,9 @@ struct StudyTimeCharts: View {
     private func chartSelectionOverlay(proxy: ChartProxy, geometry: GeometryProxy) -> some View {
         if let selectedDate = selectedDate {
             let bucketDate = normalizedBucketDate(for: selectedDate)
-            let plotAnchor = proxy.plotAreaFrame
-            let plotRect = geometry[plotAnchor]
-            if let positionX = proxy.position(forX: bucketDate) {
+            if let plotAnchor = proxy.plotFrame,
+               let positionX = proxy.position(forX: bucketDate) {
+                let plotRect = geometry[plotAnchor]
                 let lineX = positionX + plotRect.origin.x
                 let tooltipWidth: CGFloat = 180
                 let placeRight = lineX + 8 + tooltipWidth < geometry.size.width
@@ -734,7 +734,7 @@ enum ChartSpan: CaseIterable {
             
         case .thirtyDays:
             AxisMarks(values: .stride(by: .month)) { value in
-                if let date = value.as(Date.self) {
+                if value.as(Date.self) != nil {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 1.0))
                     AxisTick()
                 }
@@ -811,13 +811,11 @@ extension StudyChartDataManager.Span {
 }
 
 #Preview("月表示") {
-    let view = StudyTimeCharts()
-    return view
+    StudyTimeCharts()
         .environment(DIContainer.shared)
 }
 
 #Preview("年表示") {
-    let view = StudyTimeCharts()
+    StudyTimeCharts()
         .environment(DIContainer.shared)
 }
-

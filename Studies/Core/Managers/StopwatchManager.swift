@@ -120,17 +120,12 @@ class StopwatchManager: StopwatchProtocol {
         }
     }
     
-    // 安全なdeinit
-    deinit {
-        displayTimer.stop()
-    }
 }
 
 // MARK: - ManagedTimer Helper Class
 
 private final class ManagedTimer {
     private var timer: Timer?
-    private let queue = DispatchQueue(label: "StopwatchTimer", qos: .userInteractive)
     
     func start(interval: TimeInterval, handler: @escaping () -> Void) {
         stop() // 既存のTimerを停止

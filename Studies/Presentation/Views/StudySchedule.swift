@@ -311,7 +311,9 @@ class ScheduleViewModel {
                 UserDefaults.standard.set(true, forKey: migratedKey)
                 return
             }
-        } catch { }
+        } catch {
+            print("スケジュール移行前チェックエラー: \(error)")
+        }
 
         guard let data = UserDefaults.standard.data(forKey: "StudySchedules") else {
             UserDefaults.standard.set(true, forKey: migratedKey)
@@ -1278,4 +1280,3 @@ struct WeekdayToggleButton: View {
         availableSubjects: []
     ) { _ in }
 }
-

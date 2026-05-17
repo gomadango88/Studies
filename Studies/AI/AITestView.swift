@@ -222,6 +222,8 @@ struct AITestView: View {
         case .unavailable(.modelNotReady):
             modelStatus = "⏳ 準備中 - AIモデルをダウンロード中または準備中です"
             
+        @unknown default:
+            modelStatus = "⚠️ 不明な状態 - AIモデルの利用状況を確認できません"
         }
     }
     

@@ -8,7 +8,7 @@ import SwiftData
 import SwiftUI
 
 // MARK: - バックアップ用データ構造
-struct BackupData: Codable {
+nonisolated struct BackupData: Codable {
     let version: String
     let exportDate: Date
     let subjects: [SubjectBackup]
@@ -22,7 +22,7 @@ struct BackupData: Codable {
     }
 }
 
-struct SubjectBackup: Codable, Identifiable {
+nonisolated struct SubjectBackup: Codable, Identifiable {
     let id: UUID
     let name: String
     let colorRed: Double
@@ -45,7 +45,7 @@ struct SubjectBackup: Codable, Identifiable {
     }
 }
 
-struct StudyRecordBackup: Codable, Identifiable {
+nonisolated struct StudyRecordBackup: Codable, Identifiable {
     let id: UUID
     let subjectId: UUID
     let studyDate: Date

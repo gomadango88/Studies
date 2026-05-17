@@ -118,12 +118,8 @@ class StudyActivityManager {
                 todayTotalTime: todayTotal
             )
             
-            do {
-                await activity.update(.init(state: contentState, staleDate: Date().addingTimeInterval(60)))
-                print("Live Activity updated successfully")
-            } catch {
-                print("Live Activity update error: \(error)")
-            }
+            await activity.update(.init(state: contentState, staleDate: Date().addingTimeInterval(60)))
+            print("Live Activity updated successfully")
         }
     }
     
@@ -275,4 +271,3 @@ extension Notification.Name {
     static let liveActivityResumed = Notification.Name("liveActivityResumed")
     static let liveActivityStopped = Notification.Name("liveActivityStopped")
 }
-

@@ -176,24 +176,7 @@ class StudySessionViewModel {
             stopwatchManager.reset()
             await loadTodayRecords()
             
-            // Update daily achievements (subject and overall)
-            let today = Calendar.current.startOfDay(for: Date())
-            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
-            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
-            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
-
-            // Overall
-            if let useCase = studyRecordUseCase {
-                do {
-                    let allRecords = try await useCase.getRecordsForDate(today)
-                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
-                    let overallRequired = await getActualDailyGoalMinutes()
-                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
-                } catch { }
-            }
-            
-            // ウィジェットデータ更新
-            await updateWidgetData()
+            await refreshAchievementsAndWidget()
             
         } catch {
             HapticFeedback.error()
@@ -224,30 +207,13 @@ class StudySessionViewModel {
         errorMessage = nil
         
         do {
-            let savedRecord = try await useCase.createRecord(
+            _ = try await useCase.createRecord(
                 subjectId: subject.id,
                 duration: totalTime,
                 studyDate: Date()
             )
             
-            // Update daily achievements (subject and overall)
-            let today = Calendar.current.startOfDay(for: Date())
-            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
-            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
-            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
-
-            // Overall
-            if let useCase = studyRecordUseCase {
-                do {
-                    let allRecords = try await useCase.getRecordsForDate(today)
-                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
-                    let overallRequired = await getActualDailyGoalMinutes()
-                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
-                } catch { }
-            }
-            
-            // ウィジェットデータ更新
-            await updateWidgetData()
+            await refreshAchievementsAndWidget()
             
             isSaving = false
             return true
@@ -274,24 +240,7 @@ class StudySessionViewModel {
             try await useCase.deleteRecord(record)
             await loadTodayRecords()
             
-            // Update daily achievements (subject and overall)
-            let today = Calendar.current.startOfDay(for: Date())
-            let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
-            let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
-            upsertAchievement(for: today, subjectId: subject.id, requiredMinutes: subjectRequired, achievedMinutes: subjectMinutes)
-
-            // Overall
-            if let useCase = studyRecordUseCase {
-                do {
-                    let allRecords = try await useCase.getRecordsForDate(today)
-                    let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
-                    let overallRequired = await getActualDailyGoalMinutes()
-                    upsertAchievement(for: today, subjectId: nil, requiredMinutes: overallRequired, achievedMinutes: totalMinutes)
-                } catch { }
-            }
-            
-            // ウィジェットデータ更新
-            await updateWidgetData()
+            await refreshAchievementsAndWidget()
             
         } catch {
             if let useCaseError = error as? StudyRecordUseCaseError {
@@ -306,7 +255,7 @@ class StudySessionViewModel {
     // 実際のスケジュール目標を取得するupdateWidgetData()
     private func updateWidgetData() async {
         
-        guard let container = diContainer else {
+        guard diContainer != nil else {
             print("DIContainer not available for widget update")
             return
         }
@@ -329,6 +278,43 @@ class StudySessionViewModel {
         
         // ウィジェット更新をリクエスト
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func refreshAchievementsAndWidget() async {
+        await loadTodayRecords()
+        await updateTodayAchievements()
+        await updateWidgetData()
+    }
+
+    private func updateTodayAchievements() async {
+        guard let useCase = studyRecordUseCase else {
+            print("StudyRecordUseCase not available for achievement update")
+            return
+        }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
+        let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
+        upsertAchievement(
+            for: today,
+            subjectId: subject.id,
+            requiredMinutes: subjectRequired,
+            achievedMinutes: subjectMinutes
+        )
+
+        do {
+            let allRecords = try await useCase.getRecordsForDate(today)
+            let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
+            let overallRequired = await getActualDailyGoalMinutes()
+            upsertAchievement(
+                for: today,
+                subjectId: nil,
+                requiredMinutes: overallRequired,
+                achievedMinutes: totalMinutes
+            )
+        } catch {
+            print("Error updating overall achievement: \(error)")
+        }
     }
     
     // 全教材の今日の合計時間を計算
@@ -361,21 +347,13 @@ class StudySessionViewModel {
             return 0
         }
         
-        do {
-            // ScheduleViewModelを作成してスケジュールを取得
-            let scheduleViewModel = ScheduleViewModel(container: container)
-            await scheduleViewModel.loadData()
-            let todaySchedule = scheduleViewModel.getTodayActiveSchedule()
-            
-            if let activeSchedule = todaySchedule {
-                return activeSchedule.dailyGoalMinutes
-            } else {
-                print("No active schedule found, using default goal")
-                return 0
-            }
-            
-        } catch {
-            print("Error getting schedule: \(error)")
+        let scheduleViewModel = ScheduleViewModel(container: container)
+        await scheduleViewModel.loadData()
+        
+        if let activeSchedule = scheduleViewModel.getTodayActiveSchedule() {
+            return activeSchedule.dailyGoalMinutes
+        } else {
+            print("No active schedule found, using default goal")
             return 0
         }
     }
@@ -485,4 +463,3 @@ extension StopwatchManager {
         // 必要に応じて実装
     }
 }
-

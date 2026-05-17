@@ -88,21 +88,6 @@ struct SubjectListView: View {
             isLoading = true
         }
         
-        // DIContainerが利用可能になるまで待機
-        var attempts = 0
-        while diContainer == nil && attempts < 50 {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            attempts += 1
-        }
-        
-        guard diContainer != nil else {
-            print("DIContainer initialization timeout")
-            await MainActor.run {
-                isLoading = false
-            }
-            return
-        }
-        
         print("DIContainer available, creating ViewModel")
         
         let newViewModel = SubjectListViewModel()
@@ -416,4 +401,3 @@ struct SubjectListView: View {
     SubjectListView()
         .environment(DIContainer.shared)
 }
-

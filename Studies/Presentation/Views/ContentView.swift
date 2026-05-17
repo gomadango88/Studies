@@ -188,15 +188,9 @@ struct WidgetUpdateService {
 
         // 2) 今日の目標分（スケジュール）
         let dailyGoal: Int
-        do {
-            let scheduleVM = ScheduleViewModel(container: container)
-            await scheduleVM.loadData()
-            dailyGoal = scheduleVM.getTodayActiveSchedule()?.dailyGoalMinutes ?? 0
-            
-        } catch {
-            print("WidgetUpdateService: schedule load error: \(error)")
-            dailyGoal = 0
-        }
+        let scheduleVM = ScheduleViewModel(container: container)
+        await scheduleVM.loadData()
+        dailyGoal = scheduleVM.getTodayActiveSchedule()?.dailyGoalMinutes ?? 0
 
         // 3) コンテキストと日付を定義
         let context = container.modelContainer.mainContext
@@ -294,4 +288,3 @@ struct WidgetUpdateService {
     ContentView()
         .environment(DIContainer.shared)
 }
-

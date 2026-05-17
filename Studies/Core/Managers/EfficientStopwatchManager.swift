@@ -167,7 +167,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
     // MARK: - Private Methods
     
     private func updateElapsedTime() {
-        let oldTime = elapsedTime
         if let startDate = startDate, isRunning {
             elapsedTime = accumulatedTime + Date().timeIntervalSince(startDate)
         } else {
@@ -200,37 +199,19 @@ class EfficientStopwatchManager: StopwatchProtocol {
     
     // StudySessionManager保存のエラーハンドリング
     private func saveToStudySessionManager(subject: Subject) {
-        do {
-            // StudySessionManagerが存在するかチェック（メインアプリでのみ動作）
-            let _ = StudySessionManager.self // クラス存在チェック
-            StudySessionManager.shared.saveActiveSession(subject: subject, stopwatchManager: self)
-            print("StudySessionManager save successful")
-        } catch {
-            print("StudySessionManager not available (probably running in Extension): \(error)")
-        }
+        StudySessionManager.shared.saveActiveSession(subject: subject, stopwatchManager: self)
+        print("StudySessionManager save successful")
     }
     
     // StudySession取得のエラーハンドリング
     private func tryGetStudySession() -> StudySessionState? {
-        do {
-            let _ = StudySessionManager.self // クラス存在チェック
-            return StudySessionManager.shared.getActiveSession()
-        } catch {
-            print("StudySessionManager not available for getting session: \(error)")
-            return nil
-        }
+        StudySessionManager.shared.getActiveSession()
     }
     
     // エラーハンドリング版で状態クリア
     private func clearSessionState() {
-        // StudySessionManager のクリア（エラーハンドリング付き）
-        do {
-            let _ = StudySessionManager.self // クラス存在チェック
-            StudySessionManager.shared.clearActiveSession()
-            print("StudySessionManager cleared")
-        } catch {
-            print("StudySessionManager not available for clearing: \(error)")
-        }
+        StudySessionManager.shared.clearActiveSession()
+        print("StudySessionManager cleared")
         
         // LiveActivityManager のクリア（常に実行）
         LiveActivitySessionManager.shared.clearLiveActivityState()
@@ -324,4 +305,3 @@ class EfficientStopwatchManager: StopwatchProtocol {
         print("[\(instanceId)] Timer should be already cancelled")
     }
 }
-

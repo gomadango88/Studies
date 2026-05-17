@@ -61,11 +61,6 @@ struct StudySessionView: View {
         .interactiveDismissDisabled(shouldShowCloseConfirmation())
         
         .onAppear {
-            guard diContainer != nil else {
-                print("DIContainer is nil on StudySessionView appear")
-                return
-            }
-            
             viewModel.setContainer(diContainer, for: subject)
             efficientStopwatchManager.setSubject(subject)
             
@@ -177,15 +172,10 @@ struct StudySessionView: View {
     
     // セッション復元処理
     private func checkAndRestoreActiveSession() {
-        // StudySessionManagerが利用可能かチェック
-        do {
-            let _ = StudySessionManager.self
-            if let activeSession = StudySessionManager.shared.getActiveSession(),
-               activeSession.subjectId == subject.id {
-                restoreFromActiveSession(activeSession)
-                return
-            }
-        } catch {
+        if let activeSession = StudySessionManager.shared.getActiveSession(),
+           activeSession.subjectId == subject.id {
+            restoreFromActiveSession(activeSession)
+            return
         }
         
         // フォールバック：LiveActivityStateまたは通常の状態復元
@@ -357,4 +347,3 @@ struct StudySessionView: View {
     )
     .environment(DIContainer.shared)
 }
-

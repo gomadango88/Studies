@@ -88,8 +88,6 @@
 		F1AC86EB2E45E35100D93650 /* Exceptions for "Studies" folder in "Studies" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				"Core/Extensions/Notification+Extensions.swift",
-				"Core/Extensions/StudyRecord+ChartData.Swift",
 				Info.plist,
 			);
 			target = F1AC866E2E459BBB00D93650 /* Studies */;
@@ -123,17 +121,6 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
-/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		F1AC86EC2E45E35100D93650 /* Exceptions for "Studies" folder in "Copy Bundle Resources" phase from "Studies" target */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = F1AC866D2E459BBB00D93650 /* Resources */;
-			membershipExceptions = (
-				"Core/Extensions/Notification+Extensions.swift",
-				"Core/Extensions/StudyRecord+ChartData.Swift",
-			);
-		};
-/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		F1A6859D2E50B2B0001D1F54 /* StudiesWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -147,7 +134,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				F1AC86EB2E45E35100D93650 /* Exceptions for "Studies" folder in "Studies" target */,
-				F1AC86EC2E45E35100D93650 /* Exceptions for "Studies" folder in "Copy Bundle Resources" phase from "Studies" target */,
 				F1AC874B2E46342600D93650 /* Exceptions for "Studies" folder in "StudiesLiveActivityExtension" target */,
 			);
 			path = Studies;

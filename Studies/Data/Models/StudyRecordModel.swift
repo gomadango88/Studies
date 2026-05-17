@@ -35,7 +35,7 @@ final class StudyRecordModel {
         self.studyDate = studyDate
         self.duration = duration
         self.createdAt = createdAt
-        self.isArchived = false
+        self.isArchived = isArchived
     }
     
     func archived() -> StudyRecordModel {
