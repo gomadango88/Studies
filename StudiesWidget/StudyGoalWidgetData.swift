@@ -40,7 +40,6 @@ class WidgetDataManager {
         do {
             let encodedData = try JSONEncoder().encode(widgetData)
             userDefaults.set(encodedData, forKey: widgetDataKey)
-            userDefaults.synchronize() // 強制同期
             print("Widget data saved successfully")
         } catch {
             print("Failed to save widget data: \(error)")
@@ -80,8 +79,7 @@ class WidgetDataManager {
         let testValue = "connection_success_\(Date().timeIntervalSince1970)"
         
         userDefaults.set(testValue, forKey: testKey)
-        userDefaults.synchronize()
-        
+
         let retrievedValue = userDefaults.string(forKey: testKey)
         let isSuccess = retrievedValue == testValue
         
@@ -102,7 +100,6 @@ class WidgetDataManager {
         }
         
         userDefaults.removeObject(forKey: widgetDataKey)
-        userDefaults.synchronize()
         print("Widget data cleared")
     }
     

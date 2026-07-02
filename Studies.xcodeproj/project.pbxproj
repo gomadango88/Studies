@@ -73,7 +73,6 @@
 		F1AC87002E46284200D93650 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		F1AC87022E46284200D93650 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		F1AC871E2E462A0600D93650 /* StudiesLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StudiesLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		F1C69ECA2E5A1D3E00047620 /* FoundationModels.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FoundationModels.framework; path = System/Library/Frameworks/FoundationModels.framework; sourceTree = SDKROOT; };
 		F1F772F92F15431A00D9AF79 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -103,7 +102,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				StudyActivityAttributes.swift,
-				StudyAppIntents.swift,
 			);
 			target = F1AC866E2E459BBB00D93650 /* Studies */;
 		};
@@ -115,7 +113,6 @@
 				Core/Protocols/StopwatchProtocol.swift,
 				Data/Models/LiveActivityState.swift,
 				Domain/Entities/Subject.swift,
-				UpdateActivityIntent.swift,
 			);
 			target = F1AC871D2E462A0600D93650 /* StudiesLiveActivityExtension */;
 		};
@@ -225,7 +222,6 @@
 		F1AC86FF2E46284200D93650 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				F1C69ECA2E5A1D3E00047620 /* FoundationModels.framework */,
 				F13098A12E55E6580097DBD6 /* Combine.framework */,
 				F1AC87002E46284200D93650 /* WidgetKit.framework */,
 				F1AC87022E46284200D93650 /* SwiftUI.framework */,

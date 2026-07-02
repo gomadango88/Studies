@@ -41,7 +41,7 @@ struct AddSubjectView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section {
                     HStack {

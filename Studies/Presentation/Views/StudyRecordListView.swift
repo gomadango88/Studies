@@ -228,7 +228,7 @@ struct StudyRecordListView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 // 説明文
                 VStack(spacing: 8) {

@@ -20,7 +20,7 @@ struct BackupView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 Spacer(minLength: 150)
                 

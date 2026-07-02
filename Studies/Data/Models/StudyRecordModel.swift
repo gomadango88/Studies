@@ -18,10 +18,7 @@ final class StudyRecordModel {
     var duration: TimeInterval
     var createdAt: Date
     var isArchived: Bool = false
-    
-    // SwiftDataの関係性（オプショナル型に修正）
-    @Relationship var subject: SubjectModel?
-    
+
     init(
         id: UUID = UUID(),
         subjectId: UUID,

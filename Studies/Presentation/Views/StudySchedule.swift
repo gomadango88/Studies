@@ -173,6 +173,7 @@ enum Weekday: Int, CaseIterable, Identifiable, Codable {
 
 // MARK: - Schedule View Model
 
+@MainActor
 @Observable
 class ScheduleViewModel {
     private let container: DIContainer
@@ -185,7 +186,6 @@ class ScheduleViewModel {
         self.repository = container.scheduleRepository
     }
     
-    @MainActor
     func loadData() async {
         do {
             subjects = try await container.subjectUseCase.getAllSubjects()
@@ -194,8 +194,7 @@ class ScheduleViewModel {
             print("データ読み込みエラー: \(error)")
         }
     }
-    
-    @MainActor
+
     private func loadSchedules() async {
         await migrateFromUserDefaultsIfNeeded()
         do {
@@ -212,7 +211,6 @@ class ScheduleViewModel {
     func saveSchedule(_ schedule: StudySchedule) {
         Task {
             do {
-                await MainActor.run { }
                 try await repository.upsert(schedule)
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
@@ -300,7 +298,6 @@ class ScheduleViewModel {
         await WidgetUpdateService.update(using: container)
     }
     
-    @MainActor
     private func migrateFromUserDefaultsIfNeeded() async {
         let migratedKey = "StudySchedulesMigrated"
         if UserDefaults.standard.bool(forKey: migratedKey) { return }
@@ -345,7 +342,7 @@ struct WeeklyGoalSchedulePreview: View {
     @State private var conflictMessage = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if let viewModel = viewModel {
                     VStack(spacing: 0) {
@@ -595,11 +592,7 @@ struct ScheduleRowView: View {
             
             Toggle("", isOn: Binding(
                 get: { schedule.isEnabled },
-                set: { _ in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        onToggle()
-                    }
-                }
+                set: { _ in onToggle() }
             ))
             .labelsHidden()
             .onTapGesture {
@@ -681,7 +674,7 @@ struct ScheduleEditorView: View {
     @State private var tempDailyMinutes = 0
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("基本設定")) {
                     HStack {
@@ -1168,7 +1161,7 @@ struct SubjectGoalEditorView: View {
     @State private var selectedMinutes = 0
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("時間設定")) {
                     HStack {

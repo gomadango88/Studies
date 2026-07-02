@@ -21,7 +21,7 @@ struct RestoreView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack {
                 Spacer(minLength: 150)
                 
@@ -268,8 +268,10 @@ struct RestoreView: View {
                     color: Color(
                         red: subjectBackup.colorRed,
                         green: subjectBackup.colorGreen,
-                        blue: subjectBackup.colorBlue
+                        blue: subjectBackup.colorBlue,
+                        opacity: subjectBackup.colorAlpha
                     ),
+                    sortOrder: subjectBackup.sortOrder,
                     isPinned: subjectBackup.isPinned,
                     createdAt: subjectBackup.createdAt
                 )

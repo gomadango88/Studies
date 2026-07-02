@@ -8,15 +8,10 @@
 import SwiftUI
 
 struct StudySessionView: View {
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: StudySessionViewModel
-    
-    // アラート表示用の状態管理
-    @State private var showingCloseConfirmation = false
-    @State private var showingForceCloseAlert = false // 強制終了検出用
-    @State private var hasPresentedAlert = false
-    
+
     // 新しい効率的ストップウォッチマネージャー
     @State private var efficientStopwatchManager = EfficientStopwatchManager()
     
@@ -29,7 +24,7 @@ struct StudySessionView: View {
     
     var body: some View {
         
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     subjectHeader
@@ -58,116 +53,25 @@ struct StudySessionView: View {
         // スワイプでの閉じる動作を制御
         .presentationDetents([.large])
         .presentationDragIndicator(.visible) // ドラッグインジケーターを表示
-        .interactiveDismissDisabled(shouldShowCloseConfirmation())
-        
-        .onAppear {
+
+        .task {
+            // setContainerは同期的にisInitializedを立てるため、待機ループは不要
             viewModel.setContainer(diContainer, for: subject)
             efficientStopwatchManager.setSubject(subject)
-            
-            Task {
-                checkAndRestoreActiveSession()
-                
-                // 初期化完了まで待機
-                var attempts = 0
-                while !viewModel.isInitialized && attempts < 50 {
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    attempts += 1
-                }
-                
-                if viewModel.isInitialized {
-                    await viewModel.loadTodayRecords()
-                } else {
-                    print("Failed to initialize ViewModel for \(subject.name)")
-                }
-            }
+            checkAndRestoreActiveSession()
+            await viewModel.loadTodayRecords()
         }
+    }
 
-        
-        .task {
-            var attemptCount = 0
-            while !viewModel.isInitialized {
-                attemptCount += 1
-                if attemptCount > 100 {
-                    break
-                }
-                
-                try? await Task.sleep(nanoseconds: 50_000_000)
-            }
-            
-            if viewModel.isInitialized {
-                await viewModel.loadTodayRecords()
-            }
-        }
-        
-        .onDisappear {
-            if efficientStopwatchManager.isRunning {
-                efficientStopwatchManager.stop()
-            }
-            
-            if efficientStopwatchManager.elapsedTime == 0 && !efficientStopwatchManager.isRunning {
-                StudyActivityManager.shared.endActivity()
-            }
-        }
-        
-        // 通常のアラート
-        .alert("ストップウォッチが動作中です", isPresented: $showingCloseConfirmation) {
-            Button("リセットして閉じる", role: .destructive) {
-                efficientStopwatchManager.reset()
-                StudyActivityManager.shared.endActivity()
-                dismissView()
-            }
-            
-            Button("キャンセル", role: .cancel) {
-                hasPresentedAlert = false
-            }
-        } message: {
-            Text("ストップウォッチをリセットしてから閉じますか？")
-        }
-        
-        // 強制終了検出時のアラート
-        .alert("ストップウォッチが動作中でした", isPresented: $showingForceCloseAlert) {
-            Button("記録を保存", role: .none) {
-                Task {
-                    await saveStudyRecordWithEfficientStopwatch()
-                    dismissView()
-                }
-            }
-            
-            Button("破棄して閉じる", role: .destructive) {
-                efficientStopwatchManager.reset()
-                StudyActivityManager.shared.endActivity()
-                dismissView()
-            }
-        } message: {
-            Text("ストップウォッチが動作中でしたが、画面が閉じられました。記録を保存しますか？")
-        }
-        
-        .onChange(of: showingCloseConfirmation) { _, newValue in
-            if newValue && !hasPresentedAlert {
-                HapticFeedback.soft()
-                hasPresentedAlert = true
-            }
-        }
-    }
-    
     // MARK: - Actions
-    
+
+    // 閉じても学習セッションはバックグラウンドで継続する（Apple純正のワークアウト/タイマーと同様の挙動）
     private func handleCloseAction() {
-        if shouldShowCloseConfirmation() {
-            showingCloseConfirmation = true
-            hasPresentedAlert = false
-        } else {
-            dismissView()
-        }
+        dismissView()
     }
-    
-    private func shouldShowCloseConfirmation() -> Bool {
-        let shouldShow = efficientStopwatchManager.isRunning || efficientStopwatchManager.elapsedTime > 0
-        return shouldShow
-    }
-    
+
     private func dismissView() {
-        presentationMode.wrappedValue.dismiss()
+        dismiss()
     }
     
     // セッション復元処理
@@ -178,8 +82,8 @@ struct StudySessionView: View {
             return
         }
         
-        // フォールバック：LiveActivityStateまたは通常の状態復元
-        efficientStopwatchManager.restoreStateIfNeeded()
+        // フォールバック：LiveActivityStateまたは通常の状態復元（同じ教材の場合のみ）
+        efficientStopwatchManager.restoreStateIfNeeded(for: subject.id)
     }
     
     // アクティブセッションからの復元処理

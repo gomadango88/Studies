@@ -25,6 +25,7 @@ protocol StudyRecordUseCaseProtocol: StudyChartDataUseCase {
     // ← 追加: アーカイブ関連メソッド
     func getActiveRecords() async throws -> [StudyRecord]
     func getArchivedRecords() async throws -> [StudyRecord]
+    func getActiveRecordsForDate(_ date: Date) async throws -> [StudyRecord]
     func getActiveRecordsForDateRange(from startDate: Date, to endDate: Date) async throws -> [StudyRecord]
     func archiveRecord(_ record: StudyRecord) async throws
     func unarchiveRecord(_ record: StudyRecord) async throws

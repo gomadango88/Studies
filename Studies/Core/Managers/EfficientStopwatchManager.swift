@@ -154,12 +154,12 @@ class EfficientStopwatchManager: StopwatchProtocol {
         self.elapsedTime = time
     }
     
-    // エラーハンドリング版で状態復元
-    func restoreStateIfNeeded() {
+    // エラーハンドリング版で状態復元（別教材のセッションを誤って復元しないようsubjectIdを照合）
+    func restoreStateIfNeeded(for subjectId: UUID) {
         // StudySessionManagerを優先、エラー時はLiveActivityManagerを使用
-        if let activeSession = tryGetStudySession() {
+        if let activeSession = tryGetStudySession(), activeSession.subjectId == subjectId {
             restoreFromStudySession(activeSession)
-        } else if let liveActivityState = LiveActivitySessionManager.shared.getLiveActivityState() {
+        } else if let liveActivityState = LiveActivitySessionManager.shared.getLiveActivityState(), liveActivityState.subjectId == subjectId {
             restoreFromLiveActivity(liveActivityState)
         }
     }

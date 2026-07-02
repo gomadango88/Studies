@@ -40,9 +40,7 @@ class StudyActivityManager {
             print("Ending activity: \(activity.id)")
             await activity.end(nil, dismissalPolicy: .immediate)
         }
-        
-        // タイマー停止
-        stopPeriodicUpdates()
+
         print("All Live Activities cleared")
         try? await Task.sleep(nanoseconds: 1_000_000_000) // 1秒
         print("Live Activity cleanup completed")
@@ -66,63 +64,62 @@ class StudyActivityManager {
             print("stopwatchManager is nil")
             return
         }
-        
+
         print("Creating new Live Activity - elapsed: \(stopwatch.elapsedTime), running: \(stopwatch.isRunning)")
-        
+
         let attributes = StudyActivityAttributes(
             subjectName: subject.name,
             subjectColor: subject.color.toHex(),
             startTime: Date()
         )
-        
+
         let todayTotal = await getTodayTotalTime()
-        
-        let contentState = StudyActivityAttributes.ContentState(
-            elapsedTime: stopwatch.elapsedTime,
-            isRunning: stopwatch.isRunning,
-            lastUpdateTime: Date(),
-            todayTotalTime: todayTotal
-        )
-        
+        let contentState = makeContentState(from: stopwatch, todayTotal: todayTotal)
+
         do {
+            // Text(timerInterval:)でOSが自動更新するため、定期的な再pushは不要（staleDateも設定しない）
             let activity = try Activity.request(
                 attributes: attributes,
-                content: .init(state: contentState, staleDate: Date().addingTimeInterval(60))
+                content: .init(state: contentState, staleDate: nil)
             )
-            
+
             currentActivity = activity
             print("Live Activity started")
-            startPeriodicUpdates()
         } catch {
             print("Live Activity start error: \(error)")
         }
     }
-    
-    /// Live Activityを更新
+
+    /// Live Activityを更新（開始・一時停止・再開・保存などイベント発生時にのみ呼び出す）
     func updateActivity() {
         guard let activity = currentActivity,
               let stopwatch = stopwatchManager else {
             print("updateActivity: activity or stopwatch is nil")
             return
         }
-        
+
         print("Updating Live Activity - elapsed: \(stopwatch.elapsedTime), running: \(stopwatch.isRunning)")
-        
+
         Task {
             let todayTotal = await getTodayTotalTime()
-            
-            let contentState = StudyActivityAttributes.ContentState(
-                elapsedTime: stopwatch.elapsedTime,
-                isRunning: stopwatch.isRunning,
-                lastUpdateTime: Date(),
-                todayTotalTime: todayTotal
-            )
-            
-            await activity.update(.init(state: contentState, staleDate: Date().addingTimeInterval(60)))
+            let contentState = makeContentState(from: stopwatch, todayTotal: todayTotal)
+            await activity.update(.init(state: contentState, staleDate: nil))
             print("Live Activity updated successfully")
         }
     }
-    
+
+    // 実行中はstartDateからの経過、一時停止中はpausedDate時点で固定した経過をLive Activity側で表示する
+    private func makeContentState(from stopwatch: StopwatchProtocol, todayTotal: String) -> StudyActivityAttributes.ContentState {
+        let now = Date()
+        let adjustedStart = now.addingTimeInterval(-stopwatch.elapsedTime)
+        return StudyActivityAttributes.ContentState(
+            startDate: adjustedStart,
+            pausedDate: stopwatch.isRunning ? nil : now,
+            isRunning: stopwatch.isRunning,
+            todayTotalTime: todayTotal
+        )
+    }
+
     private func getTodayTotalTime() async -> String {
         print("Getting today total time...")
         if let provider = todayTotalTimeProvider {
@@ -139,100 +136,22 @@ class StudyActivityManager {
     /// Live Activityを終了
     func endActivity() async {
         print("StudyActivityManager endActivity called")
-        stopPeriodicUpdates()
         if let activity = currentActivity {
             await activity.end(nil, dismissalPolicy: .immediate)
             print("Live Activity ended")
         }
-        
+
         currentActivity = nil
         stopwatchManager = nil
         print("Live Activity end completed")
     }
-    
+
     func endActivity() {
         Task {
             await endActivity()
         }
     }
-    
-    // MARK: - Intent Actions
-    
-    /// 学習を再開
-    func resumeStudy() async {
-        guard let stopwatch = stopwatchManager else {
-            print("resumeStudy: stopwatch is nil")
-            return
-        }
-        
-        print("Resuming study")
-        stopwatch.start()
-        updateActivity()
-        NotificationCenter.default.post(name: .liveActivityResumed, object: nil)
-    }
-    
-    /// 学習を停止
-    func stopStudy() async {
-        guard let stopwatch = stopwatchManager else {
-            print("stopStudy: stopwatch is nil")
-            return
-        }
-        
-        print("Stopping study")
-        stopwatch.stop()
-        updateActivity()
-        NotificationCenter.default.post(name: .liveActivityStopped, object: nil)
-    }
-    
-    
-    // MARK: - Periodic Updates
-    
-    private var updateTimer: Timer?
-    
-    private func startPeriodicUpdates() {
-        print("Starting periodic updates")
-        if updateTimer != nil {
-            print("Stopping existing timer before starting new one")
-            stopPeriodicUpdates()
-        }
-        
-        // 10秒間隔で更新
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                print("self is nil in updateTimer callback - invalidating timer")
-                timer.invalidate()
-                return
-            }
-            
-            print("Timer tick (10s interval) - updating Live Activity")
-            Task { @MainActor in
-                self.updateActivity()
-            }
-        }
-        updateTimer?.tolerance = 1.0
-        print("Timer scheduled with 10.0 second interval")
-    }
-    
-    nonisolated private func stopPeriodicUpdates() {
-        print("Stopping periodic updates")
-        Task { @MainActor in
-            if let timer = self.updateTimer {
-                timer.invalidate()
-                print("Timer invalidated")
-            } else {
-                print("No timer to stop")
-            }
-            
-            self.updateTimer = nil
-            print("Timer set to nil")
-        }
-    }
-    
-    deinit {
-        print("StudyActivityManager deinit")
-        stopPeriodicUpdates()
-    }
-    
+
     // MARK: - Reset Handling
     
     /// リセット時の処理
@@ -255,19 +174,14 @@ class StudyActivityManager {
 // MARK: - Color Extension
 extension Color {
     func toHex() -> String {
-        guard let components = UIColor(self).cgColor.components else {
-            return "#000000"
-        }
-        
-        let red = Int(components[0] * 255.0)
-        let green = Int(components[1] * 255.0)
-        let blue = Int(components[2] * 255.0)
-        return String(format: "#%02X%02X%02X", red, green, blue)
-    }
-}
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        UIColor(self).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
 
-// MARK: - Notifications
-extension Notification.Name {
-    static let liveActivityResumed = Notification.Name("liveActivityResumed")
-    static let liveActivityStopped = Notification.Name("liveActivityStopped")
+        return String(
+            format: "#%02X%02X%02X",
+            Int(red * 255.0),
+            Int(green * 255.0),
+            Int(blue * 255.0)
+        )
+    }
 }

@@ -41,10 +41,11 @@ class DIContainer {
                 _modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
                 print("ModelContainer created successfully")
             } catch {
-                
-                let fallbackSchema = Schema([])
-                _modelContainer = try! ModelContainer(for: fallbackSchema)
-                print("ModelContainer initialization failed: \(error)")
+                // 永続ストアの作成に失敗した場合でも、同じスキーマのインメモリストアに
+                // フォールバックすることで、以後の全fetch/insertがクラッシュするのを防ぐ
+                print("ModelContainer initialization failed, falling back to in-memory store: \(error)")
+                let inMemoryConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                _modelContainer = try! ModelContainer(for: schema, configurations: [inMemoryConfiguration])
             }
         }
         return _modelContainer!

@@ -20,11 +20,7 @@ final class SubjectModel {
     var sortOrder: Int
     var isPinned: Bool = false  // ピン留めプロパティ
     var createdAt: Date
-    
-    // SwiftDataの関係性
-    @Relationship(deleteRule: .cascade, inverse: \StudyRecordModel.subject)
-    var studyRecords: [StudyRecordModel] = []
-    
+
     init(
         id: UUID = UUID(),
         name: String,

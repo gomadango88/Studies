@@ -14,7 +14,7 @@ struct StatisticsView: View {
     @State private var showRestoreView = false
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 StudyTimeCharts()
                 Spacer()
@@ -22,17 +22,32 @@ struct StatisticsView: View {
             .navigationTitle("統計")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                
-                ToolbarSpacer()
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showStudyRecordList = true
+                    Menu {
+                        Button {
+                            showStudyRecordList = true
+                        } label: {
+                            Label("学習記録一覧", systemImage: "list.bullet")
+                        }
+
+                        Divider()
+
+                        Button {
+                            showBackupView = true
+                        } label: {
+                            Label("バックアップ", systemImage: "externaldrive.badge.plus")
+                        }
+
+                        Button {
+                            showRestoreView = true
+                        } label: {
+                            Label("復元", systemImage: "externaldrive.badge.timemachine")
+                        }
                     } label: {
-                        Image(systemName: "list.bullet")
+                        Image(systemName: "ellipsis")
                             .font(.title3)
                     }
-                    .accessibilityLabel("学習記録一覧")
+                    .accessibilityLabel("その他のオプション")
                 }
             }
             .background(Color(.systemGroupedBackground))

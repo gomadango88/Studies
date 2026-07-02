@@ -10,30 +10,24 @@ import ActivityKit
 
 struct StudyActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        // 経過時間（秒）
-        var elapsedTime: TimeInterval
+        // 実行中の経過時間の基準となる開始時刻（elapsed = (pausedDate ?? now) - startDate）
+        var startDate: Date
+        // 一時停止した時刻（実行中はnil）。Text(timerInterval:)を使わない静的表示に使う
+        var pausedDate: Date?
         // 実行状態
         var isRunning: Bool
-        // 最終更新時刻
-        var lastUpdateTime: Date
         // 今日の合計時間（フォーマット済み文字列）
         var todayTotalTime: String
-        
-        // 秒を"--"で表示するフォーマット
-        var formattedTime: String {
-            let totalSeconds = Int(elapsedTime)
-            let hours = totalSeconds / 3600
-            let minutes = (totalSeconds % 3600) / 60
-            if hours > 0 {
-                return String(format: "%d:%02d:--", hours, minutes)
-            } else {
-                return String(format: "%d:--", minutes)
-            }
+
+        // 一時停止中の固定経過時間
+        var pausedElapsedTime: TimeInterval {
+            guard let pausedDate else { return 0 }
+            return max(0, pausedDate.timeIntervalSince(startDate))
         }
-        
-        // デバッグ用：完全な時間表示（必要に応じて）
-        var fullFormattedTime: String {
-            let totalSeconds = Int(elapsedTime)
+
+        // 一時停止中に表示する静的な時間文字列
+        var pausedFormattedTime: String {
+            let totalSeconds = Int(pausedElapsedTime)
             let hours = totalSeconds / 3600
             let minutes = (totalSeconds % 3600) / 60
             let seconds = totalSeconds % 60
@@ -43,8 +37,13 @@ struct StudyActivityAttributes: ActivityAttributes {
                 return String(format: "%d:%02d", minutes, seconds)
             }
         }
+
+        // Text(timerInterval:)に渡す範囲の終端（十分先の未来を設定）
+        var timerRangeEnd: Date {
+            startDate.addingTimeInterval(60 * 60 * 24)
+        }
     }
-    
+
     // 教材名
     var subjectName: String
     // 教材の色（Hex形式）
@@ -52,4 +51,3 @@ struct StudyActivityAttributes: ActivityAttributes {
     // 開始時刻
     var startTime: Date
 }
-

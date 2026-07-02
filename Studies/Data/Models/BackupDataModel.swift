@@ -14,7 +14,7 @@ nonisolated struct BackupData: Codable {
     let subjects: [SubjectBackup]
     let studyRecords: [StudyRecordBackup]
     
-    init(version: String = "1.0", exportDate: Date = Date(), subjects: [SubjectBackup], studyRecords: [StudyRecordBackup]) {
+    init(version: String = "1.1", exportDate: Date = Date(), subjects: [SubjectBackup], studyRecords: [StudyRecordBackup]) {
         self.version = version
         self.exportDate = exportDate
         self.subjects = subjects
@@ -28,9 +28,15 @@ nonisolated struct SubjectBackup: Codable, Identifiable {
     let colorRed: Double
     let colorGreen: Double
     let colorBlue: Double
+    let colorAlpha: Double
     let isPinned: Bool
     let createdAt: Date
-    
+    let sortOrder: Int
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, colorRed, colorGreen, colorBlue, colorAlpha, isPinned, createdAt, sortOrder
+    }
+
     init(from subject: SubjectModel) {
         self.id = subject.id
         self.name = subject.name
@@ -40,8 +46,24 @@ nonisolated struct SubjectBackup: Codable, Identifiable {
         self.colorRed = Double(red)
         self.colorGreen = Double(green)
         self.colorBlue = Double(blue)
+        self.colorAlpha = Double(alpha)
         self.isPinned = subject.isPinned
         self.createdAt = subject.createdAt
+        self.sortOrder = subject.sortOrder
+    }
+
+    // 旧バージョンのバックアップ（sortOrder/colorAlpha非対応）を後方互換で読み込む
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        colorRed = try container.decode(Double.self, forKey: .colorRed)
+        colorGreen = try container.decode(Double.self, forKey: .colorGreen)
+        colorBlue = try container.decode(Double.self, forKey: .colorBlue)
+        colorAlpha = try container.decodeIfPresent(Double.self, forKey: .colorAlpha) ?? 1.0
+        isPinned = try container.decode(Bool.self, forKey: .isPinned)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        sortOrder = try container.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
     }
 }
 

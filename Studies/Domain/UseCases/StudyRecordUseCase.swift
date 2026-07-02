@@ -43,6 +43,12 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.fetchRecords(for: date)
     }
 
+    // ← 追加: アクティブなレコードのみ日付で取得
+    func getActiveRecordsForDate(_ date: Date) async throws -> [StudyRecord] {
+        let records = try await studyRecordRepository.fetchRecords(for: date)
+        return records.filter { !$0.isArchived }
+    }
+
     func getRecordsForDateRange(from startDate: Date, to endDate: Date) async throws -> [StudyRecord] {
         try await studyRecordRepository.fetchRecords(from: startDate, to: endDate)
     }

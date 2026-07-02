@@ -27,13 +27,7 @@ class StudySessionViewModel {
     // 手動入力
     var inputHours = 0
     var inputMinutes = 0
-    
-    // 新しいストップウォッチマネージャー
-    let stopwatchManager = StopwatchManager()
-    
-    // Live Activity管理
-    private let activityManager = StudyActivityManager.shared
-    
+
     // 学習記録
     var todayRecords: [StudyRecord] = []
     var isSaving = false
@@ -56,10 +50,7 @@ class StudySessionViewModel {
         self.subject = subject
         self.diContainer = container
         self.isInitialized = true
-        
-        // ストップウォッチマネージャーにも教材を設定
-        stopwatchManager.setSubject(subject)
-        
+
         // StudyActivityManagerに今日の合計時間プロバイダーを設定
         StudyActivityManager.shared.todayTotalTimeProvider = { [weak self] in
             guard let self = self else { return "0:00" }
@@ -77,7 +68,7 @@ class StudySessionViewModel {
         
         do {
             let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await useCase.getRecordsForDate(today)
+            let allRecords = try await useCase.getActiveRecordsForDate(today)
             let totalSeconds = allRecords.reduce(0) { $0 + $1.duration }
             
             let hours = Int(totalSeconds) / 3600
@@ -105,90 +96,32 @@ class StudySessionViewModel {
         return formatTimeInterval(totalTime)
     }
     
-    var canSave: Bool {
-        let inputTime = TimeInterval(inputHours * 3600 + inputMinutes * 60)
-        return inputTime > 0 || stopwatchManager.elapsedTime > 0
-    }
-    
     // MARK: - Methods
     
     func loadTodayRecords() async {
-        
-        // studyRecordUseCaseの取得を再試行
-        var useCase = studyRecordUseCase
-        var retryCount = 0
-        while useCase == nil && retryCount < 5 {
-            try? await Task.sleep(nanoseconds: 50_000_000)
-            useCase = studyRecordUseCase
-            retryCount += 1
-        }
-        
-        guard let useCase = useCase else {
-            print("StudyRecordUseCase initialization failed after retries")
+        guard let useCase = studyRecordUseCase else {
+            print("StudyRecordUseCase not available")
             errorMessage = "データの読み込み準備中です。しばらくお待ちください。"
             return
         }
-        
+
         do {
             let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await useCase.getRecordsForDate(today)
+            let allRecords = try await useCase.getActiveRecordsForDate(today)
 
             todayRecords = allRecords.filter { record in
                 record.subjectId == subject.id
             }
-            
+
             // 成功時にエラーメッセージをクリア
             if errorMessage == "データの読み込み準備中です。しばらくお待ちください。" {
                 errorMessage = nil
             }
-            
+
         } catch {
             errorMessage = "今日の記録の読み込みに失敗しました: \(error.localizedDescription)"
             print("Error loading today records: \(error)")
         }
-    }
-    
-    func saveStudyRecord() async {
-        guard let useCase = studyRecordUseCase else {
-            errorMessage = "学習記録の保存機能が利用できません"
-            return
-        }
-        
-        guard canSave else { return }
-        
-        isSaving = true
-        errorMessage = nil
-        
-        let inputTime = TimeInterval(inputHours * 3600 + inputMinutes * 60)
-        let totalTime = inputTime + stopwatchManager.elapsedTime
-        
-        do {
-            _ = try await useCase.createRecord(
-                subjectId: subject.id,
-                duration: totalTime,
-                studyDate: Date()
-            )
-            
-            HapticFeedback.success()
-            await activityManager.endActivity()
-            inputHours = 0
-            inputMinutes = 0
-            stopwatchManager.reset()
-            await loadTodayRecords()
-            
-            await refreshAchievementsAndWidget()
-            
-        } catch {
-            HapticFeedback.error()
-            if let useCaseError = error as? StudyRecordUseCaseError {
-                errorMessage = useCaseError.errorDescription
-            } else {
-                errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
-            }
-            print("Error saving record: \(error)")
-        }
-        
-        isSaving = false
     }
     
     func saveStudyRecordWithStopwatch(inputHours: Int, inputMinutes: Int, stopwatchElapsed: TimeInterval) async -> Bool {
@@ -292,22 +225,26 @@ class StudySessionViewModel {
             return
         }
 
+        guard let context = modelContext else { return }
+
         let today = Calendar.current.startOfDay(for: Date())
         let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
         let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
-        upsertAchievement(
-            for: today,
+        AchievementService.upsertAchievement(
+            context: context,
+            date: today,
             subjectId: subject.id,
             requiredMinutes: subjectRequired,
             achievedMinutes: subjectMinutes
         )
 
         do {
-            let allRecords = try await useCase.getRecordsForDate(today)
+            let allRecords = try await useCase.getActiveRecordsForDate(today)
             let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
             let overallRequired = await getActualDailyGoalMinutes()
-            upsertAchievement(
-                for: today,
+            AchievementService.upsertAchievement(
+                context: context,
+                date: today,
                 subjectId: nil,
                 requiredMinutes: overallRequired,
                 achievedMinutes: totalMinutes
@@ -327,7 +264,7 @@ class StudySessionViewModel {
         
         do {
             let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await useCase.getRecordsForDate(today)
+            let allRecords = try await useCase.getActiveRecordsForDate(today)
             let totalSeconds = allRecords.reduce(0) { $0 + $1.duration }
             let totalMinutes = Int(totalSeconds / 60)
             
@@ -360,7 +297,8 @@ class StudySessionViewModel {
     
     // 実際の連続日数を取得
     private func getActualStreakDays() async -> Int {
-        return calculateOverallStreakFromAchievements()
+        guard let context = modelContext else { return 0 }
+        return AchievementService.calculateStreak(context: context, subjectId: nil)
     }
     
     private func formatTimeInterval(_ timeInterval: TimeInterval) -> String {
@@ -375,75 +313,6 @@ class StudySessionViewModel {
         }
     }
     
-    // MARK: - Daily Achievement Persistence
-    private func upsertAchievement(for date: Date, subjectId: UUID?, requiredMinutes: Int, achievedMinutes: Int) {
-        guard let context = modelContext else { return }
-        let key = DailyAchievementModel.makeKey(date: date, subjectId: subjectId)
-        let descriptor = FetchDescriptor<DailyAchievementModel>(
-            predicate: #Predicate { $0.key == key },
-            sortBy: []
-        )
-        let achieved = achievedMinutes >= max(requiredMinutes, 0)
-        do {
-            if let existing = try context.fetch(descriptor).first {
-                existing.requiredMinutes = requiredMinutes
-                existing.achievedMinutes = achievedMinutes
-                existing.achieved = achieved
-                existing.computedAt = Date()
-            } else {
-                let model = DailyAchievementModel(
-                    date: date,
-                    subjectId: subjectId,
-                    requiredMinutes: requiredMinutes,
-                    achievedMinutes: achievedMinutes,
-                    achieved: achieved,
-                    computedAt: Date()
-                )
-                context.insert(model)
-            }
-            try context.save()
-        } catch {
-            print("[StudySessionVM] 達成状況の保存エラー: \(error)")
-        }
-    }
-
-    private func calculateOverallStreakFromAchievements() -> Int {
-        guard let context = modelContext else { return 0 }
-        let calendar = Calendar.current
-        let todayStart = calendar.startOfDay(for: Date())
-
-        func achievement(on date: Date) -> DailyAchievementModel? {
-            let key = DailyAchievementModel.makeKey(date: date, subjectId: nil)
-            let descriptor = FetchDescriptor<DailyAchievementModel>(
-                predicate: #Predicate { $0.key == key },
-                sortBy: []
-            )
-            return try? context.fetch(descriptor).first
-        }
-
-        let startDate: Date = {
-            if let rec = achievement(on: todayStart), rec.achieved {
-                return todayStart
-            } else {
-                return calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-            }
-        }()
-
-        var date = startDate
-        var count = 0
-        for _ in 0..<365 {
-            guard let rec = achievement(on: date) else { break }
-            if rec.achieved {
-                count += 1
-                guard let prev = calendar.date(byAdding: .day, value: -1, to: date) else { break }
-                date = prev
-            } else {
-                break
-            }
-        }
-        return count
-    }
-
     private func getTodaySubjectRequiredMinutes(subjectId: UUID) async -> Int {
         guard let container = diContainer else { return 0 }
         let scheduleVM = ScheduleViewModel(container: container)
@@ -453,13 +322,5 @@ class StudySessionViewModel {
             return goal.goalMinutes
         }
         return 0
-    }
-}
-
-// MARK: - StopwatchManager Extension
-extension StopwatchManager {
-    func setSubject(_ subject: Subject) {
-        // StopwatchManagerに教材情報を設定する処理
-        // 必要に応じて実装
     }
 }

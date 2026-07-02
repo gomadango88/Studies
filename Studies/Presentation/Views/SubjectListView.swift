@@ -12,12 +12,13 @@ struct SubjectListView: View {
     @State private var isInitialized = false
     @State private var isLoading = true
     @State private var searchText = ""
+    @State private var subjectPendingDeletion: Subject?
     
     init() {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 0) {
                 if isLoading {
                     VStack {
@@ -78,6 +79,27 @@ struct SubjectListView: View {
         }
         .onChange(of: selectedSubject) { oldValue, newValue in
             print("selectedSubject changed from: \(oldValue?.name ?? "nil") to: \(newValue?.name ?? "nil")")
+        }
+        .alert(
+            "教材を削除しますか？",
+            isPresented: Binding(
+                get: { subjectPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { subjectPendingDeletion = nil }
+                }
+            ),
+            presenting: subjectPendingDeletion
+        ) { subject in
+            Button("削除", role: .destructive) {
+                Task {
+                    await viewModel?.deleteSubject(subject)
+                }
+            }
+            Button("キャンセル", role: .cancel) {
+                subjectPendingDeletion = nil
+            }
+        } message: { subject in
+            Text("「\(subject.name)」を削除します。この教材の学習記録は保持されますが、履歴には「削除された教材」として表示されるようになります。この操作は取り消せません。")
         }
     }
     
@@ -285,9 +307,7 @@ struct SubjectListView: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
-                Task {
-                    await viewModel.deleteSubject(subject)
-                }
+                subjectPendingDeletion = subject
             } label: {
                 Image(systemName: "trash")
             }
@@ -385,14 +405,8 @@ struct SubjectListView: View {
     
     private func handleDelete(at offsets: IndexSet, viewModel: SubjectListViewModel) {
         let regularList = regularSubjects(viewModel: viewModel)
-        for index in offsets {
-            if index < regularList.count {
-                let subject = regularList[index]
-                Task {
-                    await viewModel.deleteSubject(subject)
-                }
-            }
-        }
+        guard let index = offsets.first, index < regularList.count else { return }
+        subjectPendingDeletion = regularList[index]
     }
 }
 
