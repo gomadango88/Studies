@@ -12,7 +12,7 @@
 
 ## フェーズ
 
-- [ ] **Phase 1**: `TwoComponentTimePicker`(UIViewRepresentable、StudySessionViewからも使用される共有部品)を `Studies/Presentation/Views/Components/TwoComponentTimePicker.swift` へ抽出
+- [x] **Phase 1**: `TwoComponentTimePicker`(UIViewRepresentable、StudySessionViewからも使用される共有部品)を `Studies/Presentation/Views/Components/TwoComponentTimePicker.swift` へ抽出
 - [ ] **Phase 2**: `ScheduleViewModel` を `Studies/Presentation/ViewModels/ScheduleViewModel.swift` へ抽出
 - [ ] **Phase 3**: エディタ系Viewを抽出
   - `ScheduleEditorView`(+ private の `ScheduleFormSnapshot`/`SubjectGoalKey`)と `WeekdayToggleButton` → `Studies/Presentation/Views/Schedule/ScheduleEditorView.swift`("Schedule Editor" の `#Preview` も移動)
