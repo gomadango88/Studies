@@ -7,8 +7,8 @@
 
 import Foundation
 import SwiftUI
-import WidgetKit
 import SwiftData
+import os
 
 @MainActor
 @Observable
@@ -34,7 +34,10 @@ class StudySessionViewModel {
     // 学習記録
     var todayRecords: [StudyRecord] = []
     var isSaving = false
+    // 保存・削除処理のエラー（アラート表示用）
     var errorMessage: String?
+    // 今日の記録読み込みのエラー（保存エラーの表示とは独立して管理）
+    var loadErrorMessage: String?
     
     // 初期化状態を追跡
     var isInitialized = false
@@ -67,8 +70,7 @@ class StudySessionViewModel {
     
     func loadTodayRecords() async {
         guard let useCase = studyRecordUseCase else {
-            print("StudyRecordUseCase not available")
-            errorMessage = "データの読み込み準備中です。しばらくお待ちください。"
+            loadErrorMessage = "データの読み込み準備中です。しばらくお待ちください。"
             return
         }
 
@@ -80,14 +82,12 @@ class StudySessionViewModel {
                 record.subjectId == subject.id
             }
 
-            // 成功時にエラーメッセージをクリア
-            if errorMessage == "データの読み込み準備中です。しばらくお待ちください。" {
-                errorMessage = nil
-            }
+            // 読み込み成功時は読み込みエラーのみクリア（保存エラーの表示は保持する）
+            loadErrorMessage = nil
 
         } catch {
-            errorMessage = "今日の記録の読み込みに失敗しました: \(error.localizedDescription)"
-            print("Error loading today records: \(error)")
+            loadErrorMessage = "今日の記録の読み込みに失敗しました: \(error.localizedDescription)"
+            Logger.session.error("Error loading today records: \(error)")
         }
     }
     
@@ -124,7 +124,7 @@ class StudySessionViewModel {
             } else {
                 errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
             }
-            print("Error saving record: \(error)")
+            Logger.session.error("Error saving record: \(error)")
             isSaving = false
             return false
         }
@@ -148,50 +148,26 @@ class StudySessionViewModel {
             } else {
                 errorMessage = "記録の削除に失敗しました: \(error.localizedDescription)"
             }
-            print("Error deleting record: \(error)")
+            Logger.session.error("Error deleting record: \(error)")
         }
-    }
-    
-    // 実際のスケジュール目標を取得するupdateWidgetData()
-    private func updateWidgetData(schedule: StudySchedule?) async {
-
-        guard diContainer != nil else {
-            print("DIContainer not available for widget update")
-            return
-        }
-
-        // 全教材の今日の合計時間を計算
-        let totalTodayMinutes = await calculateTotalTodayMinutes()
-        // 実際のスケジュール目標を取得
-        let actualDailyGoal = schedule?.dailyGoalMinutes ?? 0
-        // 実際の連続日数を取得
-        let actualStreakDays = await getActualStreakDays()
-
-        let widgetData = WidgetStudyGoalData(
-            dailyGoal: actualDailyGoal,
-            todayMinutes: totalTodayMinutes,
-            streakDays: actualStreakDays,
-            lastUpdated: Date()
-        )
-
-        WidgetDataManager.shared.saveWidgetData(widgetData)
-
-        // ウィジェット更新をリクエスト
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func refreshAchievementsAndWidget() async {
         await loadTodayRecords()
-        // スケジュールは1回だけロードして達成記録とウィジェット更新で使い回す
+        // スケジュールは1回だけロードして達成記録の更新で使い回す
         let schedule = await loadTodayActiveSchedule()
         await updateTodayAchievements(schedule: schedule)
-        await updateWidgetData(schedule: schedule)
+
+        // 全体の合計時間・目標・連続日数の計算とウィジェット更新はWidgetUpdateServiceに一本化
+        guard let container = diContainer else {
+            return
+        }
+        await WidgetUpdateService.update(using: container)
     }
 
     // 今日のアクティブなスケジュールを1回のロードで取得
     private func loadTodayActiveSchedule() async -> StudySchedule? {
         guard let container = diContainer else {
-            print("DIContainer not available, no schedule loaded")
             return nil
         }
         let viewModel = scheduleViewModel ?? ScheduleViewModel(container: container)
@@ -202,7 +178,6 @@ class StudySessionViewModel {
 
     private func updateTodayAchievements(schedule: StudySchedule?) async {
         guard let useCase = studyRecordUseCase else {
-            print("StudyRecordUseCase not available for achievement update")
             return
         }
 
@@ -233,36 +208,8 @@ class StudySessionViewModel {
                 achievedMinutes: totalMinutes
             )
         } catch {
-            print("Error updating overall achievement: \(error)")
+            Logger.session.error("Error updating overall achievement: \(error)")
         }
-    }
-    
-    // 全教材の今日の合計時間を計算
-    private func calculateTotalTodayMinutes() async -> Int {
-        
-        guard let useCase = studyRecordUseCase else {
-            print("StudyRecordUseCase not available")
-            return 0
-        }
-        
-        do {
-            let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await useCase.getActiveRecordsForDate(today)
-            let totalSeconds = allRecords.reduce(0) { $0 + $1.duration }
-            let totalMinutes = Int(totalSeconds / 60)
-            
-            return totalMinutes
-            
-        } catch {
-            print("Error calculating total today minutes: \(error)")
-            return 0
-        }
-    }
-    
-    // 実際の連続日数を取得
-    private func getActualStreakDays() async -> Int {
-        guard let context = modelContext else { return 0 }
-        return AchievementService.calculateStreak(context: context, subjectId: nil)
     }
     
     private func formatTimeInterval(_ timeInterval: TimeInterval) -> String {

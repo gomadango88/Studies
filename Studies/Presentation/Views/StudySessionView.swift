@@ -51,6 +51,7 @@ struct StudySessionView: View {
                         handleCloseAction()
                     })
                         .labelStyle(.iconOnly)
+                        .accessibilityLabel("閉じる")
                 }
             }
         }
@@ -101,6 +102,22 @@ struct StudySessionView: View {
                 hasPresentedAlert = true
             }
         }
+
+        // 保存失敗時のエラーアラート
+        .alert("保存できませんでした", isPresented: errorAlertBinding) {
+            Button("OK") { viewModel.errorMessage = nil }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { isPresented in
+                if !isPresented { viewModel.errorMessage = nil }
+            }
+        )
     }
 
     // MARK: - Actions
@@ -171,24 +188,27 @@ struct StudySessionView: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(subject.color)
                     .frame(width: 4.8, height: 70)
-                
+                    .accessibilityHidden(true)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text(subject.name)
                         .font(.title2)
                         .fontWeight(.bold)
-                    
+
                     Text("今日の学習時間")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Text(viewModel.todayTotalTimeText)
                         .font(.headline)
                         .foregroundColor(.primary)
                 }
-                
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(subject.name)、今日の学習時間 \(viewModel.todayTotalTimeText)")
+
                 Spacer()
             }
-            
+
             Divider()
         }
     }
@@ -218,7 +238,7 @@ struct StudySessionView: View {
                     .frame(height: 160)
                 Spacer()
             }
-            
+
                     }
         .padding()
         .background(Color.gray.opacity(0.1))
@@ -250,7 +270,7 @@ struct StudySessionView: View {
                 } else {
                     Image(systemName: "checkmark.circle.fill")
                 }
-                
+
                 Text(viewModel.isSaving ? "保存中..." : "学習記録を保存")
             }
             .font(.headline)
@@ -262,8 +282,9 @@ struct StudySessionView: View {
             .glassEffect()
         }
         .disabled(!canSave || viewModel.isSaving)
+        .accessibilityLabel(viewModel.isSaving ? "保存中" : "学習記録を保存")
     }
-    
+
     // MARK: - Helper Methods
     
     private var canSave: Bool {
@@ -287,7 +308,6 @@ struct StudySessionView: View {
             efficientStopwatchManager.reset()
             await viewModel.loadTodayRecords()
         } else {
-            print("Save failed")
             HapticFeedback.error()
         }
     }
