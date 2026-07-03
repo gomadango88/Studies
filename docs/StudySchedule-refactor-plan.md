@@ -17,7 +17,7 @@
 - [x] **Phase 3**: エディタ系Viewを抽出
   - `ScheduleEditorView`(+ private の `ScheduleFormSnapshot`/`SubjectGoalKey`)と `WeekdayToggleButton` → `Studies/Presentation/Views/Schedule/ScheduleEditorView.swift`("Schedule Editor" の `#Preview` も移動)
   - `SubjectGoalEditorView` と `SubjectGoalRow` → `Studies/Presentation/Views/Schedule/SubjectGoalEditorView.swift`
-- [ ] **Phase 4**: メイン画面を抽出
+- [x] **Phase 4**: メイン画面を抽出
   - `WeeklyGoalScheduleView` → `Studies/Presentation/Views/Schedule/WeeklyGoalScheduleView.swift`(メインの `#Preview` も移動)
   - `ScheduleRowView` → `Studies/Presentation/Views/Schedule/ScheduleRowView.swift`
   - 任意: `WeeklyGoalScheduleView` 内の private `localizedWeekdays` は既存の `Calendar.localizedWeekdays()` と数学的に同一((firstWeekday+6)%7 ≡ firstWeekday-1)なので、extension呼び出しに置き換えて重複を削除してよい
