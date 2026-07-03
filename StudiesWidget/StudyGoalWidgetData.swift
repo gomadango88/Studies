@@ -9,6 +9,15 @@ import Foundation
 import SwiftUI
 import WidgetKit
 
+// MARK: - App Group 共有定数
+// アプリ本体・ウィジェット・LiveActivity拡張など、複数ターゲットから参照するための共有定数。
+// このファイルはStudiesとStudiesLiveActivityExtension双方のターゲットに含まれているため、
+// App Group IDのハードコードをここに集約する。
+
+enum AppGroupConstants {
+    static let identifier = "group.Kasahara-Takuma.Studies"
+}
+
 // MARK: - Widget用のデータ構造
 
 struct WidgetStudyGoalData: Codable {
@@ -16,9 +25,10 @@ struct WidgetStudyGoalData: Codable {
     let todayMinutes: Int
     let streakDays: Int
     let lastUpdated: Date
-    
+
+    // 目標が未設定（0分）の場合は「達成」とみなさない（アプリ本体の目標達成ベースの判定と統一）
     var isAchieved: Bool {
-        todayMinutes >= dailyGoal
+        dailyGoal > 0 && todayMinutes >= dailyGoal
     }
 }
 
@@ -26,7 +36,7 @@ struct WidgetStudyGoalData: Codable {
 
 class WidgetDataManager {
     static let shared = WidgetDataManager()
-    private let userDefaults = UserDefaults(suiteName: "group.Kasahara-Takuma.Studies")
+    private let userDefaults = UserDefaults(suiteName: AppGroupConstants.identifier)
     private let widgetDataKey = "StudyGoalWidgetData"
     
     private init() {}

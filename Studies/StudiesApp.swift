@@ -15,15 +15,6 @@ struct StudiesApp: App {
             ContentView()
                 .environment(diContainer)
                 .modelContainer(diContainer.modelContainer) // ← DIContainerから取得
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-                    print("📱 App will resign active - saving current state")
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                    print("📱 App did become active")
-                }
-                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willTerminateNotification)) { _ in
-                    print("📱 App will terminate")
-                }
         }
     }
     

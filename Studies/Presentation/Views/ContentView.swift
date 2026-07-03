@@ -17,6 +17,9 @@ struct ContentView: View {
     @State private var shouldShowActiveSession = false
     @State private var activeSubject: Subject?
     @State private var showingSessionRestoreAlert = false
+
+    // 永続ストア初期化失敗時の警告アラート用の状態（起動後1回だけ表示）
+    @State private var showingPersistentStoreUnavailableAlert = false
     
     // タブ識別用の型安全な列挙
     enum AppTab: Hashable { case record, stats, goals, history }
@@ -54,9 +57,15 @@ struct ContentView: View {
             
             // アクティブセッションのチェック
             checkForActiveStudySession()
-            
+
             // アプリ起動時にウィジェットを更新
             Task { await WidgetUpdateService.update(using: diContainer) }
+
+            // 永続ストアの初期化に失敗し、インメモリストアで動作している場合は
+            // 起動後1回だけユーザーに注意喚起する
+            if diContainer.isPersistentStoreUnavailable {
+                showingPersistentStoreUnavailableAlert = true
+            }
         }
         .sheet(isPresented: $shouldShowActiveSession) {
             if let subject = activeSubject {
@@ -93,6 +102,11 @@ struct ContentView: View {
             } else {
                 Text("前回の学習セッションを継続しますか？")
             }
+        }
+        .alert("データを保存できません", isPresented: $showingPersistentStoreUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("学習データの保存領域を初期化できなかったため、記録は端末を再起動するまで一時的にのみ保持されます。問題が続く場合は、空き容量を確認するかアプリを再インストールしてください。")
         }
         // ウィジェットタップ時のURL処理
         .onOpenURL { url in

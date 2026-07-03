@@ -177,13 +177,10 @@ class SubjectListViewModel {
         }
         
         do {
-            // 正確なsortOrder計算でデータベース更新
-            for (index, var currentSubject) in subjects.enumerated() {
-                currentSubject.sortOrder = index
-                try await useCase.updateSubject(currentSubject)
-                print("Updated sortOrder for \(currentSubject.name): \(index)")
-            }
-            
+            // 正確なsortOrder計算でバッチ更新（1回の保存処理にまとめる）
+            try await useCase.reorderSubjects(subjects)
+            print("Updated sortOrder for \(subjects.count) subjects via reorderSubjects")
+
             // 最終的にデータベースから再読み込み（整合性確保）
             await loadSubjects()
             

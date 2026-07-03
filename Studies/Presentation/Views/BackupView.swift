@@ -34,7 +34,7 @@ struct BackupView: View {
                         .font(.title2)
                         .fontWeight(.semibold)
                     
-                    Text("教材と学習記録をJSONファイルとしてエクスポートします。")
+                    Text("教材・学習記録・達成記録・スケジュールをJSONファイルとしてエクスポートします。")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -72,12 +72,21 @@ struct BackupView: View {
                                     }
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                    
+
+                                    // 達成記録・スケジュールの情報表示
+                                    HStack {
+                                        Label("\(data.dailyAchievements?.count ?? 0)件の達成記録", systemImage: "checkmark.seal")
+                                        Spacer()
+                                        Label("\(data.schedules?.count ?? 0)件のスケジュール", systemImage: "calendar")
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
                                     // ← 追加: アーカイブ状態の情報表示
                                     HStack {
                                         let activeCount = data.studyRecords.filter { !$0.isArchived }.count
                                         let archivedCount = data.studyRecords.filter { $0.isArchived }.count
-                                        
+
                                         Label("\(activeCount)件アクティブ", systemImage: "circle")
                                         Spacer()
                                         Label("\(archivedCount)件アーカイブ", systemImage: "archivebox")
@@ -171,17 +180,25 @@ struct BackupView: View {
             // SwiftDataからデータを取得（型を明示的に指定）
             let subjectDescriptor = FetchDescriptor<SubjectModel>()
             let recordDescriptor = FetchDescriptor<StudyRecordModel>()
-            
+            let achievementDescriptor = FetchDescriptor<DailyAchievementModel>()
+            let scheduleDescriptor = FetchDescriptor<StudyScheduleModel>()
+
             let subjects = try modelContext.fetch(subjectDescriptor)
             let studyRecords = try modelContext.fetch(recordDescriptor)
-            
+            let achievements = try modelContext.fetch(achievementDescriptor)
+            let schedules = try modelContext.fetch(scheduleDescriptor)
+
             // バックアップ用データ構造に変換
             let subjectBackups = subjects.map { SubjectBackup(from: $0) }
             let recordBackups = studyRecords.map { StudyRecordBackup(from: $0) }  // ← アーカイブ状態も含まれる
-            
+            let achievementBackups = achievements.map { DailyAchievementBackup(from: $0) }
+            let scheduleBackups = schedules.map { StudyScheduleBackup(from: $0) }  // SubjectGoalも入れ子で含まれる
+
             let backup = BackupData(
                 subjects: subjectBackups,
-                studyRecords: recordBackups
+                studyRecords: recordBackups,
+                dailyAchievements: achievementBackups,
+                schedules: scheduleBackups
             )
             
             await MainActor.run {
@@ -191,7 +208,7 @@ struct BackupView: View {
             
             let activeCount = recordBackups.filter { !$0.isArchived }.count
             let archivedCount = recordBackups.filter { $0.isArchived }.count
-            print("バックアップデータの準備完了: \(subjects.count)教材, \(recordBackups.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
+            print("バックアップデータの準備完了: \(subjects.count)教材, \(recordBackups.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount)), \(achievementBackups.count)達成記録, \(scheduleBackups.count)スケジュール")
             
         } catch {
             await MainActor.run {

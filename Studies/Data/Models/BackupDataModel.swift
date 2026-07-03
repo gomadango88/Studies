@@ -13,12 +13,24 @@ nonisolated struct BackupData: Codable {
     let exportDate: Date
     let subjects: [SubjectBackup]
     let studyRecords: [StudyRecordBackup]
-    
-    init(version: String = "1.1", exportDate: Date = Date(), subjects: [SubjectBackup], studyRecords: [StudyRecordBackup]) {
+    // v2.0以降のフィールド（旧フォーマットでは存在しないためオプショナル）
+    let dailyAchievements: [DailyAchievementBackup]?
+    let schedules: [StudyScheduleBackup]?
+
+    init(
+        version: String = "2.0",
+        exportDate: Date = Date(),
+        subjects: [SubjectBackup],
+        studyRecords: [StudyRecordBackup],
+        dailyAchievements: [DailyAchievementBackup]? = nil,
+        schedules: [StudyScheduleBackup]? = nil
+    ) {
         self.version = version
         self.exportDate = exportDate
         self.subjects = subjects
         self.studyRecords = studyRecords
+        self.dailyAchievements = dailyAchievements
+        self.schedules = schedules
     }
 }
 
@@ -82,5 +94,77 @@ nonisolated struct StudyRecordBackup: Codable, Identifiable {
         self.duration = record.duration
         self.createdAt = record.createdAt
         self.isArchived = record.isArchived
+    }
+}
+
+// MARK: - 達成記録のバックアップ（v2.0以降）
+nonisolated struct DailyAchievementBackup: Codable {
+    let date: Date
+    let subjectId: UUID? // nil = 全体
+    let requiredMinutes: Int
+    let achievedMinutes: Int
+    let achieved: Bool
+    let computedAt: Date
+
+    init(from achievement: DailyAchievementModel) {
+        self.date = achievement.date
+        self.subjectId = achievement.subjectId
+        self.requiredMinutes = achievement.requiredMinutes
+        self.achievedMinutes = achievement.achievedMinutes
+        self.achieved = achievement.achieved
+        self.computedAt = achievement.computedAt
+    }
+}
+
+// MARK: - スケジュールのバックアップ（v2.0以降）
+nonisolated struct StudyScheduleBackup: Codable, Identifiable {
+    let id: UUID
+    let name: String
+    let dailyGoalMinutes: Int
+    let selectedWeekdaysMask: Int
+    let isEnabled: Bool
+    let colorRed: Double
+    let colorGreen: Double
+    let colorBlue: Double
+    let colorAlpha: Double
+    let priority: Int
+    let subjectGoals: [SubjectGoalBackup]
+
+    init(from schedule: StudyScheduleModel) {
+        self.id = schedule.id
+        self.name = schedule.name
+        self.dailyGoalMinutes = schedule.dailyGoalMinutes
+        self.selectedWeekdaysMask = schedule.selectedWeekdaysMask
+        self.isEnabled = schedule.isEnabled
+        self.colorRed = schedule.colorRed
+        self.colorGreen = schedule.colorGreen
+        self.colorBlue = schedule.colorBlue
+        self.colorAlpha = schedule.colorAlpha
+        self.priority = schedule.priority
+        self.subjectGoals = schedule.subjectGoals.map { SubjectGoalBackup(from: $0) }
+    }
+}
+
+nonisolated struct SubjectGoalBackup: Codable, Identifiable {
+    let id: UUID
+    let subjectId: UUID
+    let subjectName: String
+    let subjectColorRed: Double
+    let subjectColorGreen: Double
+    let subjectColorBlue: Double
+    let subjectColorAlpha: Double
+    let goalMinutes: Int
+    let isEnabled: Bool
+
+    init(from goal: SubjectGoalModel) {
+        self.id = goal.id
+        self.subjectId = goal.subjectId
+        self.subjectName = goal.subjectName
+        self.subjectColorRed = goal.subjectColorRed
+        self.subjectColorGreen = goal.subjectColorGreen
+        self.subjectColorBlue = goal.subjectColorBlue
+        self.subjectColorAlpha = goal.subjectColorAlpha
+        self.goalMinutes = goal.goalMinutes
+        self.isEnabled = goal.isEnabled
     }
 }

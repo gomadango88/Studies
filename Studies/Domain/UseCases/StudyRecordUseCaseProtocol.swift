@@ -34,10 +34,4 @@ protocol StudyRecordUseCaseProtocol: StudyChartDataUseCase {
     
     // 統計メソッド
     func getTotalStudyTimeForToday() async throws -> TimeInterval
-    func getTotalStudyTimeForWeek() async throws -> TimeInterval
-    func getTotalStudyTimeForAllTime() async throws -> TimeInterval
-    func getStudyTimeBySubject(for date: Date) async throws -> [SubjectStudyTime]
-    func getWeeklyStudyData() async throws -> [DailyStudyData]
-    func getConsecutiveStudyDays(for subjectId: UUID) async throws -> Int
-    func getOverallConsecutiveStudyDays() async throws -> Int
 }

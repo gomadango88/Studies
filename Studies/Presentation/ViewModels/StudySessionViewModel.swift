@@ -20,7 +20,10 @@ class StudySessionViewModel {
     private var studyRecordUseCase: StudyRecordUseCaseProtocol? {
         diContainer?.studyRecordUseCase
     }
-    
+
+    // スケジュール読み込み用のViewModelを使い回す（保存のたびに複数回newしない）
+    private var scheduleViewModel: ScheduleViewModel?
+
     // subjectは外部から変更不可
     private(set) var subject: Subject
     
@@ -45,7 +48,8 @@ class StudySessionViewModel {
     func setContainer(_ container: DIContainer, for subject: Subject) {
         // 前の状態をクリア
         self.diContainer = nil
-        
+        self.scheduleViewModel = nil
+
         // 新しい教材情報を設定
         self.subject = subject
         self.diContainer = container
@@ -186,40 +190,54 @@ class StudySessionViewModel {
     }
     
     // 実際のスケジュール目標を取得するupdateWidgetData()
-    private func updateWidgetData() async {
-        
+    private func updateWidgetData(schedule: StudySchedule?) async {
+
         guard diContainer != nil else {
             print("DIContainer not available for widget update")
             return
         }
-        
+
         // 全教材の今日の合計時間を計算
         let totalTodayMinutes = await calculateTotalTodayMinutes()
         // 実際のスケジュール目標を取得
-        let actualDailyGoal = await getActualDailyGoalMinutes()
+        let actualDailyGoal = schedule?.dailyGoalMinutes ?? 0
         // 実際の連続日数を取得
         let actualStreakDays = await getActualStreakDays()
-        
+
         let widgetData = WidgetStudyGoalData(
             dailyGoal: actualDailyGoal,
             todayMinutes: totalTodayMinutes,
             streakDays: actualStreakDays,
             lastUpdated: Date()
         )
-        
+
         WidgetDataManager.shared.saveWidgetData(widgetData)
-        
+
         // ウィジェット更新をリクエスト
         WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func refreshAchievementsAndWidget() async {
         await loadTodayRecords()
-        await updateTodayAchievements()
-        await updateWidgetData()
+        // スケジュールは1回だけロードして達成記録とウィジェット更新で使い回す
+        let schedule = await loadTodayActiveSchedule()
+        await updateTodayAchievements(schedule: schedule)
+        await updateWidgetData(schedule: schedule)
     }
 
-    private func updateTodayAchievements() async {
+    // 今日のアクティブなスケジュールを1回のロードで取得
+    private func loadTodayActiveSchedule() async -> StudySchedule? {
+        guard let container = diContainer else {
+            print("DIContainer not available, no schedule loaded")
+            return nil
+        }
+        let viewModel = scheduleViewModel ?? ScheduleViewModel(container: container)
+        scheduleViewModel = viewModel
+        await viewModel.loadData()
+        return viewModel.getTodayActiveSchedule()
+    }
+
+    private func updateTodayAchievements(schedule: StudySchedule?) async {
         guard let useCase = studyRecordUseCase else {
             print("StudyRecordUseCase not available for achievement update")
             return
@@ -229,7 +247,9 @@ class StudySessionViewModel {
 
         let today = Calendar.current.startOfDay(for: Date())
         let subjectMinutes = Int(todayRecords.reduce(0) { $0 + $1.duration } / 60)
-        let subjectRequired = await getTodaySubjectRequiredMinutes(subjectId: subject.id)
+        let subjectRequired = schedule?.subjectGoals
+            .first(where: { $0.subjectId == subject.id && $0.isEnabled })?
+            .goalMinutes ?? 0
         AchievementService.upsertAchievement(
             context: context,
             date: today,
@@ -241,7 +261,7 @@ class StudySessionViewModel {
         do {
             let allRecords = try await useCase.getActiveRecordsForDate(today)
             let totalMinutes = Int(allRecords.reduce(0) { $0 + $1.duration } / 60)
-            let overallRequired = await getActualDailyGoalMinutes()
+            let overallRequired = schedule?.dailyGoalMinutes ?? 0
             AchievementService.upsertAchievement(
                 context: context,
                 date: today,
@@ -276,25 +296,6 @@ class StudySessionViewModel {
         }
     }
     
-    // 実際のスケジュール目標を取得
-    private func getActualDailyGoalMinutes() async -> Int {
-        
-        guard let container = diContainer else {
-            print("DIContainer not available, using default goal")
-            return 0
-        }
-        
-        let scheduleViewModel = ScheduleViewModel(container: container)
-        await scheduleViewModel.loadData()
-        
-        if let activeSchedule = scheduleViewModel.getTodayActiveSchedule() {
-            return activeSchedule.dailyGoalMinutes
-        } else {
-            print("No active schedule found, using default goal")
-            return 0
-        }
-    }
-    
     // 実際の連続日数を取得
     private func getActualStreakDays() async -> Int {
         guard let context = modelContext else { return 0 }
@@ -311,16 +312,5 @@ class StudySessionViewModel {
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
         }
-    }
-    
-    private func getTodaySubjectRequiredMinutes(subjectId: UUID) async -> Int {
-        guard let container = diContainer else { return 0 }
-        let scheduleVM = ScheduleViewModel(container: container)
-        await scheduleVM.loadData()
-        if let schedule = scheduleVM.getTodayActiveSchedule(),
-           let goal = schedule.subjectGoals.first(where: { $0.subjectId == subjectId && $0.isEnabled }) {
-            return goal.goalMinutes
-        }
-        return 0
     }
 }

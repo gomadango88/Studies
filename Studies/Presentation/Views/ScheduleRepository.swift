@@ -14,15 +14,34 @@ protocol ScheduleRepositoryProtocol {
 @MainActor
 final class ScheduleRepository: ScheduleRepositoryProtocol {
     private let modelContainer: ModelContainer
+    // 孤児SubjectGoalModelの掃除を起動後1回だけ実行するためのフラグ
+    private var didCleanUpOrphanGoals = false
+
     init(modelContainer: ModelContainer) { self.modelContainer = modelContainer }
 
     func fetchAll() async throws -> [StudySchedule] {
         let ctx = modelContainer.mainContext
+        cleanUpOrphanSubjectGoalsIfNeeded(in: ctx)
         let descriptor = FetchDescriptor<StudyScheduleModel>(
             sortBy: [SortDescriptor(\.priority, order: .reverse)]
         )
         let models = try ctx.fetch(descriptor)
         return models.map { $0.toDomain() }
+    }
+
+    /// どのスケジュールにも属さないSubjectGoalModel（過去の更新処理バグで発生した孤児レコード）を削除する。
+    /// 起動後の初回読み込み時に1回だけ実行する。
+    private func cleanUpOrphanSubjectGoalsIfNeeded(in ctx: ModelContext) {
+        guard !didCleanUpOrphanGoals else { return }
+        didCleanUpOrphanGoals = true
+
+        let descriptor = FetchDescriptor<SubjectGoalModel>(
+            predicate: #Predicate { $0.schedule == nil }
+        )
+        guard let orphans = try? ctx.fetch(descriptor), !orphans.isEmpty else { return }
+        orphans.forEach { ctx.delete($0) }
+        try? ctx.save()
+        print("孤児SubjectGoalModelを削除: \(orphans.count)件")
     }
 
     func upsert(_ schedule: StudySchedule) async throws {
@@ -56,7 +75,11 @@ final class ScheduleRepository: ScheduleRepositoryProtocol {
         model.priority = schedule.priority
 
         // Replace subject goals
-        model.subjectGoals.removeAll()
+        // 注意: removeAll()だけではリレーションが切れるだけで古いSubjectGoalModelが
+        // ストアに孤児として残るため、明示的に削除してから置き換える
+        for oldGoal in model.subjectGoals {
+            ctx.delete(oldGoal)
+        }
         model.subjectGoals = schedule.subjectGoals.map { g in
             let m = SubjectGoalModel(
                 id: g.id,

@@ -21,7 +21,8 @@ enum AchievementService {
             predicate: #Predicate { $0.key == key },
             sortBy: []
         )
-        let achieved = achievedMinutes >= max(requiredMinutes, 0)
+        // 目標が設定されている日(requiredMinutes > 0)のみ達成になり得る
+        let achieved = requiredMinutes > 0 && achievedMinutes >= requiredMinutes
         do {
             if let existing = try context.fetch(descriptor).first {
                 existing.requiredMinutes = requiredMinutes
@@ -45,39 +46,52 @@ enum AchievementService {
         }
     }
 
+    // 連続達成日数（目標達成ベース）を計算する
+    // - 目標(requiredMinutes > 0)を達成した日だけがカウントされる
+    // - 目標なしの日(requiredMinutes <= 0 またはレコードなし)はスキップして続きを数える
+    // - 目標があるのに未達成の過去日でストリークは途切れる
+    // - 今日がまだ未達成の場合は今日をスキップして昨日から数える
     static func calculateStreak(context: ModelContext, subjectId: UUID?) -> Int {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
 
-        func achievement(on date: Date) -> DailyAchievementModel? {
-            let key = DailyAchievementModel.makeKey(date: date, subjectId: subjectId)
-            let descriptor = FetchDescriptor<DailyAchievementModel>(
-                predicate: #Predicate { $0.key == key },
-                sortBy: []
-            )
-            return try? context.fetch(descriptor).first
+        // 対象の達成記録を一括取得して日付で参照できるようにする
+        let descriptor = FetchDescriptor<DailyAchievementModel>(
+            predicate: #Predicate { $0.subjectId == subjectId },
+            sortBy: [SortDescriptor(\.date, order: .forward)]
+        )
+        let records = (try? context.fetch(descriptor)) ?? []
+        guard !records.isEmpty else { return 0 }
+
+        var recordsByDay: [Date: DailyAchievementModel] = [:]
+        for record in records {
+            recordsByDay[calendar.startOfDay(for: record.date)] = record
+        }
+        let earliestDate = calendar.startOfDay(for: records.first?.date ?? todayStart)
+
+        // 保存済みのachievedフラグは旧仕様で書かれた可能性があるため、
+        // requiredMinutes と achievedMinutes から動的に判定する
+        func isAchieved(_ record: DailyAchievementModel) -> Bool {
+            record.requiredMinutes > 0 && record.achievedMinutes >= record.requiredMinutes
         }
 
-        // 今日達成済みなら今日から、そうでなければ昨日から遡って連続日数を数える
-        let startDate: Date = {
-            if let rec = achievement(on: todayStart), rec.achieved {
-                return todayStart
-            } else {
-                return calendar.date(byAdding: .day, value: -1, to: todayStart) ?? todayStart
-            }
-        }()
-
-        var date = startDate
         var count = 0
+        var date = todayStart
         for _ in 0..<365 {
-            guard let rec = achievement(on: date) else { break }
-            if rec.achieved {
-                count += 1
-                guard let prev = calendar.date(byAdding: .day, value: -1, to: date) else { break }
-                date = prev
-            } else {
-                break
+            if date < earliestDate { break }
+            if let record = recordsByDay[date] {
+                if isAchieved(record) {
+                    count += 1
+                } else if record.requiredMinutes > 0 && date != todayStart {
+                    // 目標があるのに未達成の過去日で途切れる
+                    // (今日はまだ達成できる可能性があるためスキップ)
+                    break
+                }
+                // 目標なしの日はスキップして続きを数える
             }
+            // レコードがない日は目標がなかった日として扱いスキップ
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: date) else { break }
+            date = previous
         }
         return count
     }

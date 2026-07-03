@@ -252,11 +252,17 @@ struct StudyGoalProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<StudyGoalEntry>) -> ()) {
         Task {
             let entry = await fetchCurrentStudyGoalData()
-            
-            // 更新間隔を短くして実データを反映
-            let nextUpdate = Calendar.current.date(byAdding: .minute, value: 2, to: Date()) ?? Date()
-            let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-            
+
+            // アプリ側がデータ更新時にWidgetCenter.reloadTimelines(またはreloadAllTimelines)を
+            // 呼び出して即時反映するため、タイムライン自体の定期更新は日付が変わるタイミングのみでよい。
+            // 短い間隔での再スケジュールはWidgetKitの更新バジェットを浪費するため避ける。
+            let nextMidnight = Calendar.current.nextDate(
+                after: Date(),
+                matching: DateComponents(hour: 0, minute: 0, second: 0),
+                matchingPolicy: .nextTime
+            ) ?? Date().addingTimeInterval(24 * 60 * 60)
+            let timeline = Timeline(entries: [entry], policy: .after(nextMidnight))
+
             completion(timeline)
         }
     }
@@ -264,7 +270,7 @@ struct StudyGoalProvider: TimelineProvider {
     // 🔥 「今日の学習」合計データ取得メソッド（目標未設定対応版）
     private func fetchCurrentStudyGoalData() async -> StudyGoalEntry {
         print("🔍 Widget: Fetching today's total study goal data...")
-        print("🔍 Widget: App Groups ID being used: group.Kasahara-Takuma.Studies")
+        print("🔍 Widget: App Groups ID being used: \(AppGroupConstants.identifier)")
         
         // WidgetDataManagerから合計データを取得
         if let widgetData = WidgetDataManager.shared.loadWidgetData() {

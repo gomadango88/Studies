@@ -78,7 +78,16 @@ struct RestoreView: View {
                                     }
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
-                                    
+
+                                    // 達成記録・スケジュールの情報表示（旧フォーマットでは含まれない）
+                                    HStack {
+                                        Label("\(data.dailyAchievements?.count ?? 0)件の達成記録", systemImage: "checkmark.seal")
+                                        Spacer()
+                                        Label("\(data.schedules?.count ?? 0)件のスケジュール", systemImage: "calendar")
+                                    }
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+
                                     // ← 追加: アーカイブ状態の情報表示
                                     HStack {
                                         let activeCount = data.studyRecords.filter { !$0.isArchived }.count
@@ -256,10 +265,14 @@ struct RestoreView: View {
         await MainActor.run { restoreStatus = .restoring }
         
         do {
-            // 既存データを全削除
+            // 既存データを全削除（達成記録・スケジュールも含む）
+            // 旧フォーマットの復元でも全タイプを削除し、古い達成記録・スケジュールが残らないようにする
             try modelContext.delete(model: SubjectModel.self)
             try modelContext.delete(model: StudyRecordModel.self)
-            
+            try modelContext.delete(model: DailyAchievementModel.self)
+            try modelContext.delete(model: StudyScheduleModel.self)
+            try modelContext.delete(model: SubjectGoalModel.self)  // 孤児レコードも含めて確実に削除
+
             // 教材データを復元
             for subjectBackup in backup.subjects {
                 let subject = SubjectModel(
@@ -290,7 +303,53 @@ struct RestoreView: View {
                 )
                 modelContext.insert(record)
             }
-            
+
+            // 達成記録を復元（v2.0以降のバックアップのみ。旧フォーマットでは空になる）
+            for achievementBackup in backup.dailyAchievements ?? [] {
+                let achievement = DailyAchievementModel(
+                    date: achievementBackup.date,
+                    subjectId: achievementBackup.subjectId,
+                    requiredMinutes: achievementBackup.requiredMinutes,
+                    achievedMinutes: achievementBackup.achievedMinutes,
+                    achieved: achievementBackup.achieved,
+                    computedAt: achievementBackup.computedAt
+                )
+                modelContext.insert(achievement)
+            }
+
+            // スケジュールを復元（v2.0以降のバックアップのみ。SubjectGoalも入れ子で復元）
+            for scheduleBackup in backup.schedules ?? [] {
+                let schedule = StudyScheduleModel(
+                    id: scheduleBackup.id,
+                    name: scheduleBackup.name,
+                    dailyGoalMinutes: scheduleBackup.dailyGoalMinutes,
+                    selectedWeekdaysMask: scheduleBackup.selectedWeekdaysMask,
+                    isEnabled: scheduleBackup.isEnabled,
+                    colorRed: scheduleBackup.colorRed,
+                    colorGreen: scheduleBackup.colorGreen,
+                    colorBlue: scheduleBackup.colorBlue,
+                    colorAlpha: scheduleBackup.colorAlpha,
+                    priority: scheduleBackup.priority
+                )
+                modelContext.insert(schedule)
+
+                schedule.subjectGoals = scheduleBackup.subjectGoals.map { goalBackup in
+                    let goal = SubjectGoalModel(
+                        id: goalBackup.id,
+                        subjectId: goalBackup.subjectId,
+                        subjectName: goalBackup.subjectName,
+                        subjectColorRed: goalBackup.subjectColorRed,
+                        subjectColorGreen: goalBackup.subjectColorGreen,
+                        subjectColorBlue: goalBackup.subjectColorBlue,
+                        subjectColorAlpha: goalBackup.subjectColorAlpha,
+                        goalMinutes: goalBackup.goalMinutes,
+                        isEnabled: goalBackup.isEnabled
+                    )
+                    goal.schedule = schedule
+                    return goal
+                }
+            }
+
             try modelContext.save()
             
             await MainActor.run {
@@ -299,7 +358,7 @@ struct RestoreView: View {
             
             let activeCount = backup.studyRecords.filter { !$0.isArchived }.count
             let archivedCount = backup.studyRecords.filter { $0.isArchived }.count
-            print("データ復元完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
+            print("データ復元完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount)), \(backup.dailyAchievements?.count ?? 0)達成記録, \(backup.schedules?.count ?? 0)スケジュール")
             
         } catch {
             await MainActor.run {

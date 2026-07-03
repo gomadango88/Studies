@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-@available(iOS 18.0, *)
 struct EfficientStopwatchView: View {
     @Bindable var stopwatchManager: EfficientStopwatchManager
     let subject: Subject
@@ -82,91 +81,13 @@ struct EfficientStopwatchView: View {
     }
 }
 
-// iOS 18未満の場合のフォールバック
-struct LegacyStopwatchView: View {
-    @Bindable var stopwatchManager: EfficientStopwatchManager
-    let subject: Subject
-    
-    var body: some View {
-        VStack(spacing: 20) {
-            Text("ストップウォッチ")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            
-            // 従来のフォーマット表示
-            VStack(spacing: 8) {
-                Text(stopwatchManager.formattedTime)
-                    .font(.system(size: 48, weight: .thin, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundColor(.primary)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-            }
-            .padding(.vertical, 20)
-            
-            // ボタンは同じ
-            HStack(spacing: 40) {
-                Button(action: {
-                    stopwatchManager.reset()
-                }) {
-                    Text("リセット")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(stopwatchManager.elapsedTime > 0 ? .primary : .secondary)
-                        .frame(width: 80, height: 80)
-                        .background(Circle().fill(Color(.systemGray5)))
-                        .overlay(Circle().stroke(Color(.systemGray4), lineWidth: 2))
-                }
-                .disabled(stopwatchManager.elapsedTime == 0)
-                
-                Spacer()
-                
-                Button(action: {
-                    if stopwatchManager.isRunning {
-                        stopwatchManager.stop()
-                    } else {
-                        stopwatchManager.startWithLiveActivity(for: subject)
-                    }
-                }) {
-                    Text(stopwatchManager.isRunning ? "停止" : "開始")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 80, height: 80)
-                        .background(
-                            Circle()
-                                .fill(stopwatchManager.isRunning ?
-                                      Color(.systemRed) : Color(.systemGreen))
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(stopwatchManager.isRunning ?
-                                        Color(.systemRed) : Color(.systemGreen),
-                                        lineWidth: 2)
-                        )
-                }
-            }
-            .padding(.horizontal, 40)
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(.systemGray5), lineWidth: 1)
-        )
-    }
-}
-
-// 統合View（iOS版本に応じて自動切り替え）
+// 統合View（EfficientStopwatchViewをそのまま使用）
 struct AdaptiveStopwatchView: View {
     @Bindable var stopwatchManager: EfficientStopwatchManager
     let subject: Subject
-    
+
     var body: some View {
-        if #available(iOS 18.0, *) {
-            EfficientStopwatchView(stopwatchManager: stopwatchManager, subject: subject)
-        } else {
-            LegacyStopwatchView(stopwatchManager: stopwatchManager, subject: subject)
-        }
+        EfficientStopwatchView(stopwatchManager: stopwatchManager, subject: subject)
     }
 }
 

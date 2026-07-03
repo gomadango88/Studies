@@ -16,16 +16,7 @@ struct StudyGoal {
     let subjectName: String
     let subjectColor: Color
     let dailyGoalMinutes: Int
-    let weeklyGoalMinutes: Int
     let isEnabled: Bool
-    
-    var dailyTargetFromWeekly: Int {
-        weeklyGoalMinutes / 7
-    }
-    
-    var effectiveDailyGoal: Int {
-        max(dailyGoalMinutes, dailyTargetFromWeekly)
-    }
 }
 
 struct StudyProgress {
@@ -137,7 +128,6 @@ class GoalViewModel {
                         subjectName: subject.name,
                         subjectColor: subject.color,
                         dailyGoalMinutes: subjectGoal.goalMinutes,
-                        weeklyGoalMinutes: subjectGoal.goalMinutes * 7,
                         isEnabled: true
                     )
                     goals.append(studyGoal)
@@ -149,7 +139,6 @@ class GoalViewModel {
                 subjectName: "全体",
                 subjectColor: .purple,
                 dailyGoalMinutes: schedule.dailyGoalMinutes,
-                weeklyGoalMinutes: schedule.dailyGoalMinutes * 7,
                 isEnabled: true
             )
             goals.append(overallGoal)
@@ -191,15 +180,7 @@ class GoalViewModel {
                 let weekTime = calculateTotalTime(for: subjectId, in: weekRecords)
                 let monthTime = calculateTotalTime(for: subjectId, in: monthRecords)
 
-                // 今日の達成状況を保存（教材別）
-                AchievementService.upsertAchievement(
-                    context: modelContext,
-                    date: today,
-                    subjectId: subjectId,
-                    requiredMinutes: goal.effectiveDailyGoal,
-                    achievedMinutes: Int(todayTime / 60)
-                )
-
+                // 達成記録の書き込みはセッション保存時とウィジェット更新時に行うため、ここでは読み取りのみ
                 let streak = AchievementService.calculateStreak(context: modelContext, subjectId: subjectId)
 
                 progress.append(StudyProgress(
@@ -215,17 +196,6 @@ class GoalViewModel {
             let totalTodayTime = todayRecords.reduce(0) { $0 + $1.duration }
             let totalWeekTime = weekRecords.reduce(0) { $0 + $1.duration }
             let totalMonthTime = monthRecords.reduce(0) { $0 + $1.duration }
-
-            // 全体目標（今日）の達成状況を保存
-            if let overallGoal = goals.first(where: { $0.subjectId == nil }) {
-                AchievementService.upsertAchievement(
-                    context: modelContext,
-                    date: today,
-                    subjectId: nil,
-                    requiredMinutes: overallGoal.effectiveDailyGoal,
-                    achievedMinutes: Int(totalTodayTime / 60)
-                )
-            }
 
             let overallStreak = AchievementService.calculateStreak(context: modelContext, subjectId: nil)
 
@@ -428,14 +398,14 @@ struct DailySummaryCard: View {
     let progress: StudyProgress
     
     private var achievementPercentage: Int {
-        guard goal.effectiveDailyGoal > 0 else { return 0 }
-        let percentage = Double(progress.todayMinutes) / Double(goal.effectiveDailyGoal) * 100
+        guard goal.dailyGoalMinutes > 0 else { return 0 }
+        let percentage = Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes) * 100
         return Int(min(percentage, 100))
     }
     
     private var progressValue: Double {
-        guard goal.effectiveDailyGoal > 0 else { return 0 }
-        return min(Double(progress.todayMinutes) / Double(goal.effectiveDailyGoal), 1.0)
+        guard goal.dailyGoalMinutes > 0 else { return 0 }
+        return min(Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes), 1.0)
     }
     
     var body: some View {
@@ -446,7 +416,7 @@ struct DailySummaryCard: View {
                         .font(.headline)
                         .fontWeight(.bold)
                     
-                    Text("\(progress.todayMinutes) / \(goal.effectiveDailyGoal) 分")
+                    Text("\(progress.todayMinutes) / \(goal.dailyGoalMinutes) 分")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
@@ -454,9 +424,9 @@ struct DailySummaryCard: View {
                 
                 Spacer()
                 
-                Image(systemName: progress.todayMinutes >= goal.effectiveDailyGoal ? "checkmark.circle.fill" : "clock")
+                Image(systemName: progress.todayMinutes >= goal.dailyGoalMinutes ? "checkmark.circle.fill" : "clock")
                     .font(.system(size: 30))
-                    .foregroundColor(progress.todayMinutes >= goal.effectiveDailyGoal ? .green : .orange)
+                    .foregroundColor(progress.todayMinutes >= goal.dailyGoalMinutes ? .green : .orange)
             }
             
             // カスタムプログレスバー
@@ -494,13 +464,13 @@ struct DailyGoalCard: View {
     let progress: StudyProgress
     
     var progressPercentage: Double {
-        guard goal.effectiveDailyGoal > 0 else { return 0.0 }
-        return min(Double(progress.todayMinutes) / Double(goal.effectiveDailyGoal), 1.0)
+        guard goal.dailyGoalMinutes > 0 else { return 0.0 }
+        return min(Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes), 1.0)
     }
     
     private var achievementPercentage: Int {
-        guard goal.effectiveDailyGoal > 0 else { return 0 }
-        let percentage = Double(progress.todayMinutes) / Double(goal.effectiveDailyGoal) * 100
+        guard goal.dailyGoalMinutes > 0 else { return 0 }
+        let percentage = Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes) * 100
         return Int(min(percentage, 100))
     }
     
@@ -518,7 +488,7 @@ struct DailyGoalCard: View {
                     
                     Spacer()
                     
-                    Text("\(progress.todayMinutes) / \(goal.effectiveDailyGoal) 分")
+                    Text("\(progress.todayMinutes) / \(goal.dailyGoalMinutes) 分")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
@@ -539,7 +509,7 @@ struct DailyGoalCard: View {
                     
                     Spacer()
                     
-                    if progress.todayMinutes >= goal.effectiveDailyGoal {
+                    if progress.todayMinutes >= goal.dailyGoalMinutes {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
@@ -551,7 +521,7 @@ struct DailyGoalCard: View {
                                 .foregroundColor(.green)
                         }
                     } else {
-                        let remainingMinutes = max(goal.effectiveDailyGoal - progress.todayMinutes, 0)
+                        let remainingMinutes = max(goal.dailyGoalMinutes - progress.todayMinutes, 0)
                         Text("残り \(remainingMinutes) 分")
                             .font(.caption)
                             .foregroundColor(.orange)
@@ -583,7 +553,6 @@ struct DailyGoalCard: View {
             subjectName: "全体",
             subjectColor: .purple,
             dailyGoalMinutes: 120,
-            weeklyGoalMinutes: 840,
             isEnabled: true
         ),
         progress: StudyProgress(

@@ -190,7 +190,7 @@ class EfficientStopwatchManager: StopwatchProtocol {
             LiveActivitySessionManager.shared.saveLiveActivityState(
                 subjectId: subject.id,
                 subjectName: subject.name,
-                subjectColor: "#0066CC", // 簡易色
+                subjectColor: subject.color.toHex(), // 教材の実際の色
                 elapsedTime: elapsedTime,
                 isRunning: isRunning
             )
