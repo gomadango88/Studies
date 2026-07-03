@@ -12,6 +12,10 @@ struct StudySessionView: View {
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: StudySessionViewModel
 
+    // アラート表示用の状態管理
+    @State private var showingCloseConfirmation = false
+    @State private var hasPresentedAlert = false
+
     // 新しい効率的ストップウォッチマネージャー
     @State private var efficientStopwatchManager = EfficientStopwatchManager()
     
@@ -53,6 +57,20 @@ struct StudySessionView: View {
         // スワイプでの閉じる動作を制御
         .presentationDetents([.large])
         .presentationDragIndicator(.visible) // ドラッグインジケーターを表示
+        .interactiveDismissDisabled(shouldShowCloseConfirmation())
+
+        // 下向きスワイプを検知して確認アラートを表示
+        .simultaneousGesture(
+            DragGesture()
+                .onEnded { value in
+                    if value.translation.height > 0 {
+                        if shouldShowCloseConfirmation() {
+                            showingCloseConfirmation = true
+                            hasPresentedAlert = false
+                        }
+                    }
+                }
+        )
 
         .task {
             // setContainerは同期的にisInitializedを立てるため、待機ループは不要
@@ -61,13 +79,43 @@ struct StudySessionView: View {
             checkAndRestoreActiveSession()
             await viewModel.loadTodayRecords()
         }
+
+        // ストップウォッチ動作中に閉じようとした場合の確認アラート
+        .alert("ストップウォッチが動作中です", isPresented: $showingCloseConfirmation) {
+            Button("リセットして閉じる", role: .destructive) {
+                efficientStopwatchManager.reset()
+                StudyActivityManager.shared.endActivity()
+                dismissView()
+            }
+
+            Button("キャンセル", role: .cancel) {
+                hasPresentedAlert = false
+            }
+        } message: {
+            Text("ストップウォッチをリセットしてから閉じますか？")
+        }
+
+        .onChange(of: showingCloseConfirmation) { _, newValue in
+            if newValue && !hasPresentedAlert {
+                HapticFeedback.soft()
+                hasPresentedAlert = true
+            }
+        }
     }
 
     // MARK: - Actions
 
-    // 閉じても学習セッションはバックグラウンドで継続する（Apple純正のワークアウト/タイマーと同様の挙動）
     private func handleCloseAction() {
-        dismissView()
+        if shouldShowCloseConfirmation() {
+            showingCloseConfirmation = true
+            hasPresentedAlert = false
+        } else {
+            dismissView()
+        }
+    }
+
+    private func shouldShowCloseConfirmation() -> Bool {
+        efficientStopwatchManager.isRunning || efficientStopwatchManager.elapsedTime > 0
     }
 
     private func dismissView() {
