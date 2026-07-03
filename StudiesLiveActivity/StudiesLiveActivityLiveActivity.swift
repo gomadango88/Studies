@@ -294,6 +294,7 @@ extension Color {
 // MARK: - Previews
 
 #Preview("Lock Screen", as: .content, using: StudyActivityAttributes(
+    subjectId: UUID(),
     subjectName: "数学",
     subjectColor: "#0066CC",
     startTime: Date()

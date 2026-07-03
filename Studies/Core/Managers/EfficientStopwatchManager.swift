@@ -98,31 +98,18 @@ class EfficientStopwatchManager: StopwatchProtocol {
         clearSessionState()
     }
     
-    // startWithLiveActivity メソッドを修正
     func startWithLiveActivity(for subject: Subject) {
-        
         // 教材を設定
         setSubject(subject)
 
-        // 既存のライブアクティビティをチェック
-        if StudyActivityManager.shared.isActivityActive {
-            print("Live Activity already active, updating instead of creating new one")
-            start() // 内部のstart()のみ呼ぶ
-            
-            // 既存のアクティビティを更新
-            Task { @MainActor in
-                activityManager = StudyActivityManager.shared
-                StudyActivityManager.shared.updateActivity()
-            }
-        } else {
-            print("No existing Live Activity, creating new one")
-            start()
-            
-            // 新しいLive Activity開始
-            Task { @MainActor in
-                activityManager = StudyActivityManager.shared
-                StudyActivityManager.shared.startActivity(for: subject, stopwatchManager: self)
-            }
+        start()
+
+        activityManager = StudyActivityManager.shared
+        // 同じ教材のアクティビティが表示中ならそのまま更新（一時停止→再開など）、
+        // 未表示・別教材なら作り直す
+        if !StudyActivityManager.shared.resumeActivity(for: subject, stopwatchManager: self) {
+            print("No reusable Live Activity, creating new one")
+            StudyActivityManager.shared.startActivity(for: subject, stopwatchManager: self)
         }
     }
 

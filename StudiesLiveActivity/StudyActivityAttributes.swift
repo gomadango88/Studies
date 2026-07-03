@@ -42,6 +42,8 @@ struct StudyActivityAttributes: ActivityAttributes {
         }
     }
 
+    // 教材ID（再開時に同じ教材のアクティビティか判定するために使う）
+    var subjectId: UUID
     // 教材名
     var subjectName: String
     // 教材の色（Hex形式）
