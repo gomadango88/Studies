@@ -42,8 +42,10 @@ class EfficientStopwatchManager: StopwatchProtocol {
                     print("self is nil in timer callback")
                     return
                 }
-                
+
+                let previousElapsed = self.elapsedTime
                 self.updateElapsedTime()
+                self.refreshActivityOnDisplayBoundary(previous: previousElapsed, current: self.elapsedTime)
             }
         
         // 状態保存
@@ -150,7 +152,16 @@ class EfficientStopwatchManager: StopwatchProtocol {
     }
     
     // MARK: - Private Methods
-    
+
+    // Dynamic Islandコンパクト表示の段階（m:ss → 分 → 時間1桁 → 時間2桁）が
+    // 切り替わる境界をまたいだら、Live Activityを再描画して表示形式を更新する
+    private func refreshActivityOnDisplayBoundary(previous: TimeInterval, current: TimeInterval) {
+        let displayBoundaries: [TimeInterval] = [600, 3600, 36000]
+        if displayBoundaries.contains(where: { previous < $0 && current >= $0 }) {
+            activityManager?.updateActivity()
+        }
+    }
+
     private func updateElapsedTime() {
         if let startDate = startDate, isRunning {
             elapsedTime = accumulatedTime + Date().timeIntervalSince(startDate)

@@ -86,37 +86,82 @@ struct ElapsedTimeText: View {
 // MARK: - Compact Timer
 
 /// Dynamic Islandのコンパクト表示用タイマー。
-/// Text(timerInterval:)は利用可能な横幅いっぱいに広がるため、
-/// 経過時間の桁数に合わせた固定幅を与えて余白が出ないようにする。
+/// 10分未満はm:ssのライブタイマー、10分以上は「15分」、1時間以上は「1時間」表示
+/// （1:59:59までは1時間）。分・時間の数字はText(timerInterval:)の先頭桁だけを
+/// clipして見せることで、アプリからの更新なしでもOSが繰り上がりを自動反映する。
 struct CompactTimerText: View {
     let state: StudyActivityAttributes.ContentState
+
+    // SF Rounded 13pt semibold monospacedDigitの実測幅（数字約8.85pt/桁）。
+    // これより広げるとコロンの描画が漏れる
+    private static let oneDigitClipWidth: CGFloat = 9.0
+    private static let twoDigitClipWidth: CGFloat = 18.0
 
     var body: some View {
         Group {
             if state.isRunning {
-                Text(timerInterval: state.startDate...state.timerRangeEnd, countsDown: false)
-                    .frame(width: timerWidth)
+                runningView
             } else {
-                // 静的テキストは内容にぴったり収まるので幅指定不要
-                Text(state.pausedFormattedTime)
+                Text(pausedCompactText)
             }
         }
         .font(.system(size: 13, weight: .semibold, design: .rounded))
         .monospacedDigit()
-        .multilineTextAlignment(.center)
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
     }
 
-    // 表示中の桁数（9:59 / 59:59 / 9:59:59）に応じた幅。
-    // 桁が繰り上がった直後は次の更新までminimumScaleFactorで吸収する
-    private var timerWidth: CGFloat {
+    @ViewBuilder
+    private var runningView: some View {
         let elapsed = Date().timeIntervalSince(state.startDate)
-        switch elapsed {
-        case ..<600: return 33
-        case ..<3600: return 41
-        default: return 56
+        if elapsed < 600 {
+            // m:ssライブ表示。10分到達後も次の再描画までは正確な時間を出し続ける
+            Text(timerInterval: state.startDate...state.timerRangeEnd, countsDown: false)
+                .frame(width: 33)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.7)
+        } else if elapsed < 3600 {
+            // MM:SSの分2桁だけを表示。範囲終端59:59で凍結させ、
+            // 再描画が来ないまま1時間を超えても表示が崩れないようにする
+            unitClippedTimer(
+                clipWidth: Self.twoDigitClipWidth,
+                end: state.startDate.addingTimeInterval(59 * 60 + 59),
+                unit: "分"
+            )
+        } else if elapsed < 36000 {
+            // H:MM:SSの時間1桁だけを表示。終端9:59:59で凍結
+            unitClippedTimer(
+                clipWidth: Self.oneDigitClipWidth,
+                end: state.startDate.addingTimeInterval(9 * 3600 + 59 * 60 + 59),
+                unit: "時間"
+            )
+        } else {
+            // 10時間以上は時間2桁
+            unitClippedTimer(
+                clipWidth: Self.twoDigitClipWidth,
+                end: state.timerRangeEnd,
+                unit: "時間"
+            )
         }
+    }
+
+    private func unitClippedTimer(clipWidth: CGFloat, end: Date, unit: String) -> some View {
+        HStack(alignment: .lastTextBaseline, spacing: 1) {
+            Text(timerInterval: state.startDate...end, countsDown: false)
+                .fixedSize()
+                .frame(width: clipWidth, alignment: .leading)
+                .clipped()
+
+            Text(unit)
+                .font(.system(size: 10, weight: .semibold))
+        }
+    }
+
+    // 一時停止中は値が固定なので単純な文字列で同じ段階表示にする
+    private var pausedCompactText: String {
+        let seconds = Int(state.pausedElapsedTime)
+        if seconds >= 3600 { return "\(seconds / 3600)時間" }
+        if seconds >= 600 { return "\(seconds / 60)分" }
+        return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 }
 
