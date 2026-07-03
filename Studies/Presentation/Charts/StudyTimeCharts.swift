@@ -19,13 +19,89 @@ struct StudyTimeCharts: View {
     @State private var buttonPressed = false
     @State private var selectedDate: Date? = nil
     @State private var lastHapticBucketDate: Date? = nil
-    
+
+    // 集計済みデータ（読み込み時に一度だけ構築し、スクロール中の再計算を避ける）
+    @State private var sortedRowsForChart: [ChartRow] = []
+    @State private var totalsByBucket: [Date: Double] = [:]
+    @State private var rowsByBucket: [Date: [ChartRow]] = [:]
+
+    // 初回ロード済みかどうか（trueの間はスパン切替時にスピナーを出さず、直前の表示位置を維持する）
+    @State private var hasLoadedOnce = false
+    // 直前に読み込んだスパン（切替時の表示位置維持の変換元として使用）
+    @State private var lastLoadedSpan: ChartSpan = .sevenDays
+
     init() {
-        let now = Date()
-        let calendar = Calendar.current
-        _scrollPos = State(initialValue: calendar.startOfDay(for: now))
+        _scrollPos = State(initialValue: Self.todayScrollPosition(for: .sevenDays))
     }
-    
+
+    // 「今日」を含むページの先頭位置を計算（インスタンス生成前や初期値計算にも使えるようstatic化）
+    // 週表示は今週の先頭、月・年表示は今日／今月が右端に来る位置を返す
+    private static func todayScrollPosition(for span: ChartSpan) -> Date {
+        let calendar = Calendar.current
+        let now = Date()
+
+        switch span {
+        case .sevenDays:
+            // ヘルスケア準拠: 今日を含む「今週」の先頭を表示する
+            // （dateInterval(of: .weekOfYear) はシステム設定の週始まりの曜日 Calendar.firstWeekday に従う）
+            return calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
+        case .thirtyDays:
+            let idealPos = calendar.date(byAdding: .day, value: -29, to: now) ?? now
+            return calendar.startOfDay(for: idealPos)
+        case .twelveMonths:
+            let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+            return calendar.date(byAdding: .month, value: -11, to: currentMonthStart) ?? currentMonthStart
+        }
+    }
+
+    // 年表示は月ごとに日数が異なる（うるう年など）ため、スクロール位置（月初）を基準に
+    // 実際の12ヶ月分の長さを都度計算する。週・月表示は固定長のまま。
+    private var currentVisibleLength: TimeInterval {
+        switch span {
+        case .sevenDays, .thirtyDays:
+            return span.visibleLength
+        case .twelveMonths:
+            let calendar = Calendar.current
+            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos)) ?? scrollPos
+            let monthEnd = calendar.date(byAdding: .month, value: 12, to: monthStart) ?? monthStart.addingTimeInterval(span.visibleLength)
+            return monthEnd.timeIntervalSince(monthStart)
+        }
+    }
+
+    // チャートのX軸ドメイン（スクロール可能な全範囲）。
+    // Swift Chartsはプロットされたデータからドメインを推定するため、明示指定しないと
+    // 最初の記録より前や最後の記録より後（今日・未来を含む）へスクロールできない。
+    // ヘルスケアと同様に「常に今日を含む1ページへ確実にスクロールできる」ように、
+    // 記録の有無に関わらず「最初の記録を含むページの先頭 〜 今日を含むページの末尾」を必ずカバーする。
+    // ドメインの起点は「今日のページ」からページ幅の整数倍だけ遡った位置に揃えることで、
+    // ページングの境界が暦の境界（週始まり・日・月初）と一致するようにしている。
+    private var chartXDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let pageStart = Self.todayScrollPosition(for: span)
+        let earliest = min(sortedRowsForChart.first?.bucketDate ?? pageStart, pageStart)
+
+        switch span {
+        case .sevenDays:
+            let upper = calendar.date(byAdding: .day, value: 7, to: pageStart) ?? pageStart
+            let days = max(calendar.dateComponents([.day], from: earliest, to: pageStart).day ?? 0, 0)
+            let pages = (days + 6) / 7
+            let lower = calendar.date(byAdding: .day, value: -7 * pages, to: pageStart) ?? earliest
+            return lower...upper
+        case .thirtyDays:
+            let upper = calendar.date(byAdding: .day, value: 30, to: pageStart) ?? pageStart
+            let days = max(calendar.dateComponents([.day], from: earliest, to: pageStart).day ?? 0, 0)
+            let pages = (days + 29) / 30
+            let lower = calendar.date(byAdding: .day, value: -30 * pages, to: pageStart) ?? earliest
+            return lower...upper
+        case .twelveMonths:
+            let upper = calendar.date(byAdding: .month, value: 12, to: pageStart) ?? pageStart
+            let months = max(calendar.dateComponents([.month], from: earliest, to: pageStart).month ?? 0, 0)
+            let pages = (months + 11) / 12
+            let lower = calendar.date(byAdding: .month, value: -12 * pages, to: pageStart) ?? earliest
+            return lower...upper
+        }
+    }
+
     var scrollPositionEnd: Date {
         let calendar = Calendar.current
         switch span {
@@ -77,13 +153,21 @@ struct StudyTimeCharts: View {
     
     var averageStudyTimeInVisibleRange: Double {
         let calendar = Calendar.current
+        let now = Date()
         let (rangeStart, rangeEnd) = alignedVisibleRange()
-        
-        // 表示範囲内のすべてのバケット（日または月）を生成
-        var allBuckets: [Date] = []
+
+        // 表示範囲内のすべてのバケット（日または月）を生成し、
+        // ロード時に事前集計済みの totalsByBucket から合計を引くだけにする。
+        // 週・年表示のページは今日より後（未来）のバケットも含むため、
+        // まだ始まっていないバケットは平均の分母から除外する（ヘルスケア準拠）
+        var bucketCount = 0
+        var totalMinutes = 0.0
         var current = rangeStart
         while current < rangeEnd {
-            allBuckets.append(current)
+            if current <= now {
+                bucketCount += 1
+                totalMinutes += totalsByBucket[current] ?? 0.0
+            }
             switch span {
             case .sevenDays, .thirtyDays:
                 current = calendar.date(byAdding: .day, value: 1, to: current)!
@@ -91,36 +175,28 @@ struct StudyTimeCharts: View {
                 current = calendar.date(byAdding: .month, value: 1, to: current)!
             }
         }
-        
-        guard !allBuckets.isEmpty else { return 0 }
-        
-        // 表示範囲の行のみ集計
-        let visibleRows = rows.filter { row in
-            row.bucketDate >= rangeStart && row.bucketDate < rangeEnd
-        }
-        
-        let totalsByBucket = Dictionary(grouping: visibleRows, by: { $0.bucketDate })
-            .mapValues { bucketRows in
-                bucketRows.reduce(0) { $0 + $1.durationMinutes }
-            }
-        
-        // 0分のバケットも含めて平均を計算
-        let totalMinutes = allBuckets.reduce(0.0) { total, date in
-            total + (totalsByBucket[date] ?? 0.0)
-        }
-        
-        return totalMinutes / Double(allBuckets.count)
+
+        guard bucketCount > 0 else { return 0 }
+        return totalMinutes / Double(bucketCount)
     }
-    
+
     // 表示範囲の合計学習時間
     var totalStudyTimeInVisibleRange: Double {
+        let calendar = Calendar.current
         let (rangeStart, rangeEnd) = alignedVisibleRange()
-        
-        let visibleRows = rows.filter { row in
-            row.bucketDate >= rangeStart && row.bucketDate < rangeEnd
+
+        var totalMinutes = 0.0
+        var current = rangeStart
+        while current < rangeEnd {
+            totalMinutes += totalsByBucket[current] ?? 0.0
+            switch span {
+            case .sevenDays, .thirtyDays:
+                current = calendar.date(byAdding: .day, value: 1, to: current)!
+            case .twelveMonths:
+                current = calendar.date(byAdding: .month, value: 1, to: current)!
+            }
         }
-        
-        return visibleRows.reduce(0.0) { $0 + $1.durationMinutes }
+        return totalMinutes
     }
     
     // 「今日」ボタンの表示判定
@@ -152,28 +228,9 @@ struct StudyTimeCharts: View {
         }
     }
     
-    // 「今日」の適切なスクロール位置を計算
+    // 「今日」の適切なスクロール位置を計算（今日/今月が右端に来る位置）
     private func getTodayScrollPosition() -> Date {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch span {
-        case .sevenDays:
-            // 今日から6日前の位置（今日が右端に来るように）
-            let idealPos = calendar.date(byAdding: .day, value: -6, to: now) ?? now
-            return calendar.startOfDay(for: idealPos)
-            
-        case .thirtyDays:
-            // 今日から29日前の位置（今日が右端に来るように）
-            let idealPos = calendar.date(byAdding: .day, value: -29, to: now) ?? now
-            return calendar.startOfDay(for: idealPos)
-            
-        case .twelveMonths:
-            // 今月から11ヶ月前の位置（今月が右端に来るように）
-            let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let idealPos = calendar.date(byAdding: .month, value: -11, to: currentMonthStart) ?? currentMonthStart
-            return idealPos
-        }
+        Self.todayScrollPosition(for: span)
     }
     
     // 可視範囲を日・月境界に揃えて取得（終了は排他的）
@@ -288,8 +345,8 @@ struct StudyTimeCharts: View {
             
             // チャート表示部分
             Group {
-                if isLoading {
-                    // ローディング中
+                if isLoading && rows.isEmpty {
+                    // ローディング中（初回ロード時のみ。スパン切替時は直前のデータを表示し続ける）
                     VStack(spacing: 12) {
                         ProgressView()
                             .scaleEffect(1.2)
@@ -325,22 +382,10 @@ struct StudyTimeCharts: View {
         }
         .task(id: span) { await loadData() }
     }
-    
+
     @ViewBuilder
     private func createChart() -> some View {
         let selectedBucketDate = selectedDate.map { normalizedBucketDate(for: $0) }
-        let sortedRowsForChart = rows.sorted { lhs, rhs in
-            if lhs.bucketDate != rhs.bucketDate {
-                return lhs.bucketDate < rhs.bucketDate
-            }
-            if lhs.durationMinutes != rhs.durationMinutes {
-                return lhs.durationMinutes > rhs.durationMinutes
-            }
-            if lhs.subjectName != rhs.subjectName {
-                return lhs.subjectName < rhs.subjectName
-            }
-            return lhs.id.uuidString < rhs.id.uuidString
-        }
         Chart(sortedRowsForChart) { row in
             BarMark(
                 x: .value("Period", row.bucketDate, unit: span.xUnit),
@@ -350,11 +395,11 @@ struct StudyTimeCharts: View {
             .opacity(selectedBucketDate == nil || row.bucketDate == selectedBucketDate! ? 1.0 : 0.25)
         }
         .chartScrollableAxes(.horizontal)
-        .chartScrollTargetBehavior(
-            .valueAligned(matching: span.matching,
-                          majorAlignment: .matching(span.majorAlignment))
-        )
-        .chartXVisibleDomain(length: span.visibleLength)
+        // 記録の前後（今日を含む現在のページまで）も含む明示的なドメインを指定し、
+        // データが存在しない期間へも確実にスクロールできるようにする
+        .chartXScale(domain: chartXDomain)
+        .chartScrollTargetBehavior(HealthStylePagingBehavior(span: span))
+        .chartXVisibleDomain(length: currentVisibleLength)
         .chartScrollPosition(x: $scrollPos)
         .chartXAxis {
             span.axisMarks
@@ -393,14 +438,22 @@ struct StudyTimeCharts: View {
     // MARK: - データ読み込み（全データ一括読み込み）
     private func loadData() async {
         await MainActor.run {
+            // 初回ロード時のみスピナーを表示する。スパン切替時は直前のデータを表示し続け、
+            // 裏で読み込みが完了次第、新しいスパンのデータに差し替える（ヘルスケア準拠のUX）。
             isLoading = true
-            rows = []
+
+            // スパンが切り替わった場合、切替前に見ていた日付付近を新しいスパンでも維持する
+            // （例: 週→月なら、見ていた週を含む30日間が表示される）
+            if hasLoadedOnce && lastLoadedSpan != span {
+                scrollPos = convertScrollPosition(scrollPos, from: lastLoadedSpan, to: span)
+            }
+            lastLoadedSpan = span
         }
-        
+
         do {
             let manager = StudyChartDataManager(useCase: di.studyRecordUseCase)
             let subjects = try await di.subjectUseCase.getAllSubjects()
-            
+
             // アクティブなデータのみ取得
             let (startDate, endDate) = span.fullDataRange()
             let baseRows = try await manager.fetchActiveSummarizedRows(
@@ -408,7 +461,7 @@ struct StudyTimeCharts: View {
                 from: startDate,
                 to: endDate
             )
-            
+
             let newRows = baseRows.compactMap { base -> ChartRow? in
                 guard let subject = subjects.first(where: { $0.id == base.subjectId }) else { return nil }
                 return ChartRow(
@@ -419,52 +472,94 @@ struct StudyTimeCharts: View {
                     durationMinutes: base.duration / 60
                 )
             }
-            
+
             await MainActor.run {
-                rows = newRows.sorted { $0.bucketDate < $1.bucketDate }
+                applyLoadedRows(newRows)
                 isLoading = false
-                adjustInitialScrollPosition()
+                if !hasLoadedOnce {
+                    // 初回ロード時のみ「今日が右端」の位置へ調整する。
+                    // スパン切替時はすでにこの関数の冒頭で位置を維持済みのため上書きしない。
+                    scrollPos = Self.todayScrollPosition(for: span)
+                    hasLoadedOnce = true
+                }
             }
         } catch {
             await MainActor.run {
                 print("Chart load error:", error)
-                rows = []
+                if !hasLoadedOnce {
+                    rows = []
+                    sortedRowsForChart = []
+                    totalsByBucket = [:]
+                    rowsByBucket = [:]
+                }
                 isLoading = false
             }
         }
     }
-    
-    // 初回読み込み後のスクロール位置調整
+
+    // 読み込んだ行を保持しつつ、スクロール中に毎フレーム再計算しなくて済むよう
+    // ソート済み配列とバケット別の集計を一度だけ構築する
     @MainActor
-    private func adjustInitialScrollPosition() {
-        guard !rows.isEmpty else { return }
-        
-        let calendar = Calendar.current
-        switch span {
-        case .sevenDays:
-            // 週表示: 最新データから1週間前の位置に設定
-            if let latestDate = rows.map({ $0.bucketDate }).max() {
-                let idealScrollPos = calendar.date(byAdding: .day, value: -6, to: latestDate) ?? latestDate
-                scrollPos = calendar.startOfDay(for: idealScrollPos)
+    private func applyLoadedRows(_ newRows: [ChartRow]) {
+        rows = newRows
+
+        sortedRowsForChart = newRows.sorted { lhs, rhs in
+            if lhs.bucketDate != rhs.bucketDate {
+                return lhs.bucketDate < rhs.bucketDate
             }
-            
-        case .thirtyDays:
-            // 月表示: 最新データから1ヶ月前の位置に設定
-            if let latestDate = rows.map({ $0.bucketDate }).max() {
-                let idealScrollPos = calendar.date(byAdding: .day, value: -29, to: latestDate) ?? latestDate
-                scrollPos = calendar.startOfDay(for: idealScrollPos)
+            if lhs.durationMinutes != rhs.durationMinutes {
+                return lhs.durationMinutes > rhs.durationMinutes
             }
-            
-        case .twelveMonths:
-            // 年表示: 最新データから12ヶ月前の月初に設定
-            if let latestDate = rows.map({ $0.bucketDate }).max() {
-                let latestMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: latestDate))!
-                let idealScrollPos = calendar.date(byAdding: .month, value: -11, to: latestMonthStart) ?? latestMonthStart
-                scrollPos = idealScrollPos
+            if lhs.subjectName != rhs.subjectName {
+                return lhs.subjectName < rhs.subjectName
             }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+
+        rowsByBucket = Dictionary(grouping: newRows, by: { $0.bucketDate })
+        totalsByBucket = rowsByBucket.mapValues { bucketRows in
+            bucketRows.reduce(0.0) { $0 + $1.durationMinutes }
         }
     }
-    
+
+    // スパン切替時、切替前に見ていた表示範囲の代表日（起点＝左端）を
+    // 新しいスパンの表示範囲に変換する（例: 週→月なら、見ていた週を含む30日間を表示）
+    private func convertScrollPosition(_ position: Date, from oldSpan: ChartSpan, to newSpan: ChartSpan) -> Date {
+        guard oldSpan != newSpan else { return position }
+
+        let calendar = Calendar.current
+
+        // 直前に見ていた範囲の中心付近の日付を基準にする
+        let oldVisibleLength: TimeInterval
+        switch oldSpan {
+        case .sevenDays, .thirtyDays:
+            oldVisibleLength = oldSpan.visibleLength
+        case .twelveMonths:
+            let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: position)) ?? position
+            let monthEnd = calendar.date(byAdding: .month, value: 12, to: monthStart) ?? monthStart
+            oldVisibleLength = monthEnd.timeIntervalSince(monthStart)
+        }
+        let anchorDate = position.addingTimeInterval(oldVisibleLength / 2)
+
+        switch newSpan {
+        case .sevenDays:
+            // アンカー日を含む週（システム設定の週始まり基準）の先頭＝ページ境界に揃える
+            return calendar.dateInterval(of: .weekOfYear, for: anchorDate)?.start
+                ?? calendar.startOfDay(for: anchorDate)
+        case .thirtyDays:
+            // 「今日のページ」を基準とした30日ページの区切りに揃え、アンカー日を含むページを表示する
+            let todayPageStart = Self.todayScrollPosition(for: .thirtyDays)
+            let anchorDay = calendar.startOfDay(for: anchorDate)
+            let offsetDays = calendar.dateComponents([.day], from: todayPageStart, to: anchorDay).day ?? 0
+            let pageIndex = min(Int(floor(Double(offsetDays) / 30.0)), 0)
+            return calendar.date(byAdding: .day, value: pageIndex * 30, to: todayPageStart) ?? anchorDay
+        case .twelveMonths:
+            let anchorMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: anchorDate)) ?? anchorDate
+            let idealPos = calendar.date(byAdding: .month, value: -11, to: anchorMonthStart) ?? anchorMonthStart
+            return idealPos
+        }
+    }
+
     // MARK: - Selection Helpers & Overlay
     private func normalizedBucketDate(for date: Date) -> Date {
         let calendar = Calendar.current
@@ -502,8 +597,8 @@ struct StudyTimeCharts: View {
                 let tooltipLeftX = max(8, min(geometry.size.width - tooltipWidth - 8, placeRight ? lineX + 8 : lineX - tooltipWidth - 8))
                 let tooltipTopY = plotRect.origin.y + 8
 
-                let bucketRows = rows.filter { $0.bucketDate == bucketDate }
-                let totalMinutes = bucketRows.reduce(0.0) { $0 + $1.durationMinutes }
+                let bucketRows = rowsByBucket[bucketDate] ?? []
+                let totalMinutes = totalsByBucket[bucketDate] ?? 0.0
                 let sortedRows = bucketRows.sorted { $0.durationMinutes > $1.durationMinutes }
 
                 ZStack(alignment: .topLeading) {
@@ -622,6 +717,32 @@ struct StudyTimeCharts: View {
     }
 }
 
+// MARK: - スクロール吸着挙動（ヘルスケア準拠のページング）
+// スパンごとに最適な吸着挙動へ委譲する。単一の型にまとめることで、
+// スパン切替時にチャートのビュー階層（スクロール状態）を作り直さずに済む。
+private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
+    let span: ChartSpan
+
+    nonisolated func updateTarget(_ target: inout ScrollTarget, context: ChartScrollTargetBehaviorContext) {
+        switch span {
+        case .sevenDays, .thirtyDays:
+            // 週・月表示: 1回のスワイプで必ず可視域ぴったり1ページ分だけめくれる
+            // 確定的なページング（UIScrollViewのisPagingEnabled相当）。
+            // ページ境界は chartXDomain の起点をページ幅の整数倍に揃えることで
+            // 暦の境界（週始まりの曜日・日境界）と一致させている。
+            PagingScrollTargetBehavior().updateTarget(&target, context: context)
+        case .twelveMonths:
+            // 年表示: 月ごとに日数が異なるため固定長ページングでは月境界からずれてしまう。
+            // 月初への吸着＋ページ単位のメジャー吸着を組み合わせ、
+            // 暦に正しく揃えつつ12ヶ月単位のページめくり感を出す。
+            ValueAlignedChartScrollTargetBehavior(
+                matching: DateComponents(day: 1),
+                majorAlignment: .page
+            ).updateTarget(&target, context: context)
+        }
+    }
+}
+
 // MARK: - Support Types
 private struct ChartRow: Identifiable, Equatable {
     let id: UUID
@@ -647,7 +768,11 @@ enum ChartSpan: CaseIterable {
         switch self {
         case .sevenDays: return day * 7
         case .thirtyDays: return day * 30
-        case .twelveMonths: return day * 30 * 12
+        case .twelveMonths:
+            // 年表示の実際の可視域は月初からの12ヶ月分（うるう年等で日数が変動する）を
+            // 動的に計算する（StudyTimeCharts.currentVisibleLength を参照）。
+            // ここでは Calendar 計算に失敗した場合のフォールバック用の近似値（365日）を返す。
+            return day * 365
         }
     }
     
@@ -696,33 +821,19 @@ enum ChartSpan: CaseIterable {
         return formatter.string(from: date)
     }
     
-    var matching: DateComponents {
-        switch self {
-        case .sevenDays, .thirtyDays: return .init(hour: 0)
-        case .twelveMonths: return .init(day: 1)
-        }
-    }
-    
-    var majorAlignment: DateComponents {
-        switch self {
-        case .sevenDays: return .init(weekday: 2)
-        case .thirtyDays: return .init(day: 1)
-        case .twelveMonths: return .init(month: 1)
-        }
-    }
-    
     @AxisContentBuilder
     var axisMarks: some AxisContent {
         switch self {
         case .sevenDays:
             AxisMarks(values: .stride(by: .day)) { value in
                 if let date = value.as(Date.self) {
+                    // 週の区切り（システム設定の週始まりの曜日）を強調表示する
                     let weekday = Calendar.current.component(.weekday, from: date)
-                    let isMonday = (weekday == 2)
-                    
+                    let isWeekStart = (weekday == Calendar.current.firstWeekday)
+
                     AxisGridLine(stroke: StrokeStyle(
-                        lineWidth: isMonday ? 1.0 : 0.5,
-                        dash: isMonday ? [] : [2, 2]
+                        lineWidth: isWeekStart ? 1.0 : 0.5,
+                        dash: isWeekStart ? [] : [2, 2]
                     ))
                     AxisTick()
                     AxisValueLabel {
@@ -741,8 +852,9 @@ enum ChartSpan: CaseIterable {
             }
             AxisMarks(values: .stride(by: .day)) { value in
                 if let date = value.as(Date.self) {
+                    // 週の区切り（システム設定の週始まりの曜日）ごとに日付ラベルを表示する
                     let weekday = Calendar.current.component(.weekday, from: date)
-                    if weekday == 1 {
+                    if weekday == Calendar.current.firstWeekday {
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
                         AxisTick()
                         AxisValueLabel {
