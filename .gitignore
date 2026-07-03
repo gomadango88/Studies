@@ -1,0 +1,11 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Claudeサブエージェント用の別ワークツリー（このリポジトリのgit管理外）
+.claude/worktrees/
