@@ -77,9 +77,6 @@ struct SubjectListView: View {
         .sheet(item: $selectedSubject) { subject in
             StudySessionView(subject: subject)
         }
-        .onChange(of: selectedSubject) { oldValue, newValue in
-            print("selectedSubject changed from: \(oldValue?.name ?? "nil") to: \(newValue?.name ?? "nil")")
-        }
         .alert(
             "教材を削除しますか？",
             isPresented: Binding(
@@ -109,9 +106,7 @@ struct SubjectListView: View {
         await MainActor.run {
             isLoading = true
         }
-        
-        print("DIContainer available, creating ViewModel")
-        
+
         let newViewModel = SubjectListViewModel()
         newViewModel.setContainer(diContainer)
         
@@ -125,8 +120,6 @@ struct SubjectListView: View {
             isInitialized = true
             isLoading = false
         }
-        
-        print("SubjectListView initialization completed")
     }
     
     // MARK: - Views
@@ -259,51 +252,55 @@ struct SubjectListView: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(subject.color)
                 .frame(width: 4, height: 50)
-            
+                .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(subject.name)
                         .font(.headline)
                         .foregroundColor(.primary)
                         .lineLimit(2)
-                    
+
                     //if subject.isPinned {
                         //Image(systemName: "pin.fill")
                             //.font(.caption)
                             //.foregroundColor(.orange)
                     //}
                 }
-                
+
                 Text("作成日: \(subject.createdAt.japaneseDateString)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundColor(.secondary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 4)
         .background(Color.clear)
         .contentShape(Rectangle())
         .onTapGesture {
-            print("Subject tapped: \(subject.name) (ID: \(subject.id))")
             handleSubjectTap(subject)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(subject.name)、作成日 \(subject.createdAt.japaneseDateString)")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("タップして学習を開始")
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 Task {
-                    print("Pin toggle started for: \(subject.name)")
                     await viewModel.toggleSubjectPin(subject)
-                    print("Pin toggle completed for: \(subject.name)")
                 }
             } label: {
                 Image(systemName: subject.isPinned ? "pin.slash" : "pin")
             }
             .tint(subject.isPinned ? .gray : .orange)
+            .accessibilityLabel(subject.isPinned ? "ピン留めを解除" : "ピン留め")
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
@@ -311,12 +308,13 @@ struct SubjectListView: View {
             } label: {
                 Image(systemName: "trash")
             }
+            .accessibilityLabel("削除")
         }
         .listRowSeparator(.hidden)
         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         .id(subject.id.uuidString + "-\(subject.isPinned)")
     }
-    
+
     private var addButton: some View {
         Button {
             showingAddSubject = true
@@ -324,6 +322,7 @@ struct SubjectListView: View {
             Image(systemName: "plus")
                 .font(.headline)
         }
+        .accessibilityLabel("教材を追加")
     }
     
     // MARK: - Computed Properties（既存のsectionの上に追加）
@@ -368,12 +367,9 @@ struct SubjectListView: View {
     // MARK: - Methods
     
     private func handleSubjectTap(_ subject: Subject) {
-        print("handleSubjectTap called for: \(subject.name) (ID: \(subject.id))")
-        
         // 🔥 修正: より確実な状態更新
         DispatchQueue.main.async {
             selectedSubject = subject
-            print("selectedSubject set to: \(subject.name)")
         }
     }
     

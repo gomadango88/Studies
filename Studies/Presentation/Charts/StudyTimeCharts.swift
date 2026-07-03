@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Charts
+import os
 
 struct StudyTimeCharts: View {
     @Environment(DIContainer.self) private var di
@@ -348,13 +349,14 @@ struct StudyTimeCharts: View {
         VStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
                 // スパン切替
-                Picker("", selection: $span) {
+                Picker("表示期間", selection: $span) {
                     Text("週").tag(ChartSpan.sevenDays)
                     Text("月").tag(ChartSpan.thirtyDays)
                     Text("年").tag(ChartSpan.twelveMonths)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
+                .accessibilityLabel("表示期間")
                 
                 // 平均と合計を横並びで表示
                 VStack(alignment: .leading, spacing: 8) {
@@ -429,6 +431,7 @@ struct StudyTimeCharts: View {
                             .scaleEffect(shouldShowTodayButton ? 1.0 : 0.8)
                             .allowsHitTesting(shouldShowTodayButton)
                             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: shouldShowTodayButton)
+                            .accessibilityLabel("今日に移動")
                         }
                     )
                 }
@@ -530,6 +533,8 @@ struct StudyTimeCharts: View {
         .onChange(of: scrollPos) { _, _ in
             scheduleYAxisRecalc()
         }
+        .accessibilityLabel("学習時間グラフ")
+        .accessibilityValue("\(dateRangeString)、合計\(formatMinutesToHourMinute(totalStudyTimeInVisibleRange))")
     }
     
     // MARK: - データ読み込み（全データ一括読み込み）
@@ -591,7 +596,7 @@ struct StudyTimeCharts: View {
             }
         } catch {
             await MainActor.run {
-                print("Chart load error:", error)
+                Logger.ui.error("Chart load error: \(error)")
                 if !hasLoadedOnce {
                     rows = []
                     sortedRowsForChart = []

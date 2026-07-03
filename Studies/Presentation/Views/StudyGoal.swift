@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import os
 
 // MARK: - Data Models
 
@@ -36,14 +37,14 @@ struct CustomProgressBar: View {
     let height: CGFloat
     let cornerRadius: CGFloat
     let useGradient: Bool = true
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 // 背景バー
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(Color(.systemGray5))
-                
+
                 // 進捗バー（グラデーション対応）
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(progressBarFill)
@@ -52,6 +53,9 @@ struct CustomProgressBar: View {
             }
         }
         .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("達成率")
+        .accessibilityValue("\(Int(max(0, min(1, progress)) * 100))%")
     }
     
     // 微細なグラデーション自動生成
@@ -103,10 +107,10 @@ class GoalViewModel {
             await loadGoals()
             await loadProgress()
         } catch {
-            print("データ読み込みエラー: \(error)")
+            Logger.ui.error("データ読み込みエラー: \(error)")
         }
     }
-    
+
     @MainActor
     private func loadGoals() async {
         guard let scheduleVM = scheduleViewModel else {
@@ -210,7 +214,7 @@ class GoalViewModel {
             progress.append(overallProgress)
             
         } catch {
-            print("進捗データ読み込みエラー: \(error)")
+            Logger.ui.error("進捗データ読み込みエラー: \(error)")
         }
     }
     
@@ -229,7 +233,7 @@ class GoalViewModel {
 
 // MARK: - Main Goal Setting View
 
-struct GoalSettingPreview: View {
+struct GoalSettingView: View {
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: GoalViewModel?
     @State private var scheduleViewModel: ScheduleViewModel?
@@ -261,11 +265,12 @@ struct GoalSettingPreview: View {
                     Button("編集") {
                         showingScheduleEditor = true
                     }
-                
+                    .accessibilityLabel("目標を編集")
+
                 }
             }
             .sheet(isPresented: $showingScheduleEditor) {
-                WeeklyGoalSchedulePreview()
+                WeeklyGoalScheduleView()
                     .onDisappear {
                         Task {
                             await scheduleViewModel?.loadData()
@@ -427,6 +432,7 @@ struct DailySummaryCard: View {
                 Image(systemName: progress.todayMinutes >= goal.dailyGoalMinutes ? "checkmark.circle.fill" : "clock")
                     .font(.system(size: 30))
                     .foregroundColor(progress.todayMinutes >= goal.dailyGoalMinutes ? .green : .orange)
+                    .accessibilityHidden(true)
             }
             
             // カスタムプログレスバー
@@ -454,6 +460,8 @@ struct DailySummaryCard: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("今日の学習、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、\(progress.streakDays)日連続")
     }
 }
 
@@ -474,12 +482,22 @@ struct DailyGoalCard: View {
         return Int(min(percentage, 100))
     }
     
+    private var accessibilitySummary: String {
+        if progress.todayMinutes >= goal.dailyGoalMinutes {
+            return "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、目標達成"
+        } else {
+            let remainingMinutes = max(goal.dailyGoalMinutes - progress.todayMinutes, 0)
+            return "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、残り\(remainingMinutes)分"
+        }
+    }
+
     var body: some View {
         HStack(spacing: 16) {
             RoundedRectangle(cornerRadius: 4)
                 .fill(goal.subjectColor)
                 .frame(width: 4, height: 60)
-            
+                .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(goal.subjectName)
@@ -533,6 +551,8 @@ struct DailyGoalCard: View {
         .background(Color(.secondarySystemGroupedBackground))
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
     }
 }
 
@@ -541,7 +561,7 @@ struct DailyGoalCard: View {
 #if DEBUG && !WIDGET_EXTENSION
 // メインアプリでのみ使用
 #Preview {
-    GoalSettingPreview()
+    GoalSettingView()
         .environment(DIContainer.shared)
 }
 #else

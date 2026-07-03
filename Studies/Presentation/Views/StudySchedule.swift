@@ -9,6 +9,7 @@ import SwiftUI
 import WidgetKit
 import UIKit
 import SwiftData
+import os
 
 // MARK: - Helper Functions
 
@@ -191,7 +192,7 @@ class ScheduleViewModel {
             subjects = try await container.subjectUseCase.getAllSubjects()
             await loadSchedules()
         } catch {
-            print("データ読み込みエラー: \(error)")
+            Logger.ui.error("データ読み込みエラー: \(error)")
         }
     }
 
@@ -200,7 +201,7 @@ class ScheduleViewModel {
         do {
             schedules = try await repository.fetchAll()
         } catch {
-            print("スケジュール読み込みエラー: \(error)")
+            Logger.ui.error("スケジュール読み込みエラー: \(error)")
             schedules = []
         }
     }
@@ -215,7 +216,7 @@ class ScheduleViewModel {
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
             } catch {
-                print("スケジュール保存エラー: \(error)")
+                Logger.ui.error("スケジュール保存エラー: \(error)")
             }
         }
     }
@@ -231,7 +232,7 @@ class ScheduleViewModel {
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
             } catch {
-                print("スケジュール削除エラー: \(error)")
+                Logger.ui.error("スケジュール削除エラー: \(error)")
             }
         }
     }
@@ -246,7 +247,7 @@ class ScheduleViewModel {
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
             } catch {
-                print("スケジュール削除エラー: \(error)")
+                Logger.ui.error("スケジュール削除エラー: \(error)")
             }
         }
     }
@@ -259,7 +260,7 @@ class ScheduleViewModel {
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
             } catch {
-                print("スケジュール削除エラー: \(error)")
+                Logger.ui.error("スケジュール削除エラー: \(error)")
             }
         }
     }
@@ -272,7 +273,7 @@ class ScheduleViewModel {
                 schedules = try await repository.fetchAll()
                 await updateWidgetAfterScheduleChange()
             } catch {
-                print("スケジュール更新エラー: \(error)")
+                Logger.ui.error("スケジュール更新エラー: \(error)")
             }
         }
     }
@@ -294,7 +295,6 @@ class ScheduleViewModel {
     
     // スケジュール変更後のウィジェット更新
     private func updateWidgetAfterScheduleChange() async {
-        print("Updating widget after schedule change via WidgetUpdateService...")
         await WidgetUpdateService.update(using: container)
     }
     
@@ -309,7 +309,7 @@ class ScheduleViewModel {
                 return
             }
         } catch {
-            print("スケジュール移行前チェックエラー: \(error)")
+            Logger.data.error("スケジュール移行前チェックエラー: \(error)")
         }
 
         guard let data = UserDefaults.standard.data(forKey: "StudySchedules") else {
@@ -325,7 +325,7 @@ class ScheduleViewModel {
             // Optionally clear old data
             // UserDefaults.standard.removeObject(forKey: "StudySchedules")
         } catch {
-            print("旧スケジュールの移行失敗: \(error)")
+            Logger.data.error("旧スケジュールの移行失敗: \(error)")
             UserDefaults.standard.set(true, forKey: migratedKey)
         }
     }
@@ -333,7 +333,7 @@ class ScheduleViewModel {
 
 // MARK: - Main Schedule View
 
-struct WeeklyGoalSchedulePreview: View {
+struct WeeklyGoalScheduleView: View {
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: ScheduleViewModel?
     @State private var showingScheduleEditor = false
@@ -1118,7 +1118,7 @@ struct TwoComponentTimePicker: UIViewRepresentable {
         return (clamped / max(1, minuteStep)) * max(1, minuteStep)
     }
 
-    class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
+    class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate, UIPickerViewAccessibilityDelegate {
         var parent: TwoComponentTimePicker
         init(_ parent: TwoComponentTimePicker) { self.parent = parent }
 
@@ -1136,6 +1136,10 @@ struct TwoComponentTimePicker: UIViewRepresentable {
                 let m = parent.minutesRange[row]
                 return "\(m) 分"
             }
+        }
+
+        func pickerView(_ pickerView: UIPickerView, accessibilityLabelForComponent component: Int) -> String? {
+            component == 0 ? "時間" : "分"
         }
 
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
@@ -1262,7 +1266,7 @@ struct WeekdayToggleButton: View {
 // MARK: - Preview
 
 #Preview {
-    WeeklyGoalSchedulePreview()
+    WeeklyGoalScheduleView()
         .environment(DIContainer.shared)
 }
 

@@ -15,7 +15,14 @@ struct AddSubjectView: View {
     let onSubjectAdded: () -> Void
     
     private let presetColors: [Color] = [.blue, .green, .orange, .red, .purple]
-    
+    private let presetColorNames: [Color: String] = [
+        .blue: "青",
+        .green: "緑",
+        .orange: "オレンジ",
+        .red: "赤",
+        .purple: "紫"
+    ]
+
     private var isCustomColorSelected: Bool {
         !presetColors.contains(viewModel.selectedColor)
     }
@@ -71,9 +78,13 @@ struct AddSubjectView: View {
                                         .stroke(viewModel.selectedColor == color ? Color.primary : Color.clear, lineWidth: 2)
                                 )
                                 .onTapGesture { viewModel.selectedColor = color }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(presetColorNames[color] ?? "色")
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAddTraits(viewModel.selectedColor == color ? .isSelected : [])
                         }
 
-                        ColorPicker("", selection: $viewModel.selectedColor)
+                        ColorPicker("その他の色", selection: $viewModel.selectedColor)
                             .labelsHidden()
                             .frame(width: 30, height: 30)
                             .clipShape(Circle())
@@ -82,6 +93,7 @@ struct AddSubjectView: View {
                                     .stroke(Color.primary, lineWidth: 2)
                                     .opacity(isCustomColorSelected ? 1 : 0)
                             )
+                            .accessibilityLabel("その他の色")
                     }
                     .padding(.vertical, 8)
                 } header: {
@@ -98,7 +110,8 @@ struct AddSubjectView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(viewModel.selectedColor)
                             .frame(width: 4, height: 50)
-                        
+                            .accessibilityHidden(true)
+
                         VStack(alignment: .leading) {
                             Text(viewModel.subjectName.isEmpty ? "教材名" : viewModel.subjectName)
                                 .font(.headline)

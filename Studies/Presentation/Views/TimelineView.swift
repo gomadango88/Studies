@@ -90,7 +90,6 @@ struct TimelineView: View {
     
     // MARK: - ウィジェット更新メソッド
     private func updateWidgets() async {
-        print("📱 Updating widgets after timeline change via WidgetUpdateService...")
         await WidgetUpdateService.update(using: diContainer)
     }
     
@@ -227,7 +226,7 @@ struct OptimizedTimelineRecordCard: View {
         HStack(spacing: 12) {
             // タイムライン線とドット
             timelineDot
-            
+
             // 記録カード
             recordCardContent
         }
@@ -239,6 +238,8 @@ struct OptimizedTimelineRecordCard: View {
                 cachedDurationText = formatDuration(record.duration)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(subject?.name ?? "削除された教材")、\(cachedDurationText)、\(record.studyDate.formatted(date: .omitted, time: .shortened))")
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 onDelete()
@@ -261,6 +262,7 @@ struct OptimizedTimelineRecordCard: View {
                 .frame(maxHeight: .infinity)
         }
         .frame(height: 56)
+        .accessibilityHidden(true)
     }
     
     private var recordCardContent: some View {
@@ -289,6 +291,7 @@ struct OptimizedTimelineRecordCard: View {
                 Image(systemName: "clock")
                     .font(.caption2)
                     .foregroundColor(.secondary)
+                    .accessibilityHidden(true)
 
                 Text(record.studyDate.formatted(date: .omitted, time: .shortened))
                     .font(.caption)

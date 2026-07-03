@@ -26,9 +26,11 @@ struct EfficientStopwatchView: View {
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                     .animation(.none, value: stopwatchManager.isRunning)
+                    .accessibilityLabel("経過時間 \(accessibleElapsedTimeText)")
+                    .accessibilityAddTraits(.updatesFrequently)
             }
             .padding(.vertical, 20)
-            
+
             // Apple純正風ボタン
             HStack(spacing: 40) {
                 // リセットボタン（左側）
@@ -46,9 +48,10 @@ struct EfficientStopwatchView: View {
                         .glassEffect()
                 }
                 .disabled(stopwatchManager.elapsedTime == 0)
-                
+                .accessibilityLabel("リセット")
+
                 Spacer()
-                
+
                 // 開始/停止ボタン（右側）
                 Button(action: {
                     if stopwatchManager.isRunning {
@@ -68,6 +71,7 @@ struct EfficientStopwatchView: View {
                         )
                         .glassEffect()
                 }
+                .accessibilityLabel(stopwatchManager.isRunning ? "一時停止" : "開始")
             }
             .padding(.horizontal, 40)
         }
@@ -78,6 +82,19 @@ struct EfficientStopwatchView: View {
             RoundedRectangle(cornerRadius: 26)
                 .stroke(Color(.systemGray5), lineWidth: 1)
         )
+    }
+
+    private var accessibleElapsedTimeText: String {
+        let totalSeconds = Int(stopwatchManager.elapsedTime)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        var components: [String] = []
+        if hours > 0 { components.append("\(hours)時間") }
+        if minutes > 0 || hours > 0 { components.append("\(minutes)分") }
+        components.append("\(seconds)秒")
+        return components.joined()
     }
 }
 

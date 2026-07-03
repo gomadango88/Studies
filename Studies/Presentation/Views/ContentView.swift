@@ -43,7 +43,7 @@ struct ContentView: View {
             
             // 目標画面
             Tab("目標", systemImage: "flag.fill", value: AppTab.goals) {
-                GoalSettingPreview()
+                GoalSettingView()
             }
             
             // タイムライン画面
