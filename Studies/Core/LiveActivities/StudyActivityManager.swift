@@ -10,6 +10,10 @@ import ActivityKit
 import SwiftUI
 import os
 
+// Live Activity拡張ターゲットにも共有されるファイルのため、
+// アプリターゲット専用のLogger extension(AppLogger.swift)ではなくファイルプライベートなLoggerを使う
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Studies", category: "liveActivity")
+
 @MainActor
 @Observable
 class StudyActivityManager {
@@ -70,7 +74,7 @@ class StudyActivityManager {
     private func createNewActivity(for subject: Subject, stopwatchManager: StopwatchProtocol) async {
         self.stopwatchManager = stopwatchManager
         guard let stopwatch = self.stopwatchManager else {
-            Logger.liveActivity.warning("stopwatchManager is nil, cannot create Live Activity")
+            logger.warning("stopwatchManager is nil, cannot create Live Activity")
             return
         }
 
@@ -92,7 +96,7 @@ class StudyActivityManager {
 
             currentActivity = activity
         } catch {
-            Logger.liveActivity.error("Live Activity start error: \(error)")
+            logger.error("Live Activity start error: \(error)")
         }
     }
 
