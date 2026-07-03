@@ -42,18 +42,15 @@ struct StudiesLiveActivityLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     // ヒーロー表示：中央に大きくタイマーを置く
                     ElapsedTimeText(state: context.state, alignment: .center)
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .font(.system(size: 38, weight: .bold, design: .rounded))
                         .foregroundStyle(context.state.isRunning ? subjectColor : .secondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 2)
                 }
             } compactLeading: {
                 SubjectTile(color: subjectColor, isRunning: context.state.isRunning, size: 18)
             } compactTrailing: {
-                ElapsedTimeText(state: context.state, alignment: .trailing)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                CompactTimerText(state: context.state)
                     .foregroundStyle(context.state.isRunning ? .primary : .secondary)
-                    .frame(maxWidth: 64)
             } minimal: {
                 SubjectTile(color: subjectColor, isRunning: context.state.isRunning, size: 18)
             }
@@ -83,6 +80,43 @@ struct ElapsedTimeText: View {
         .multilineTextAlignment(alignment)
         .lineLimit(1)
         .minimumScaleFactor(0.6)
+    }
+}
+
+// MARK: - Compact Timer
+
+/// Dynamic Islandのコンパクト表示用タイマー。
+/// Text(timerInterval:)は利用可能な横幅いっぱいに広がるため、
+/// 経過時間の桁数に合わせた固定幅を与えて余白が出ないようにする。
+struct CompactTimerText: View {
+    let state: StudyActivityAttributes.ContentState
+
+    var body: some View {
+        Group {
+            if state.isRunning {
+                Text(timerInterval: state.startDate...state.timerRangeEnd, countsDown: false)
+                    .frame(width: timerWidth)
+            } else {
+                // 静的テキストは内容にぴったり収まるので幅指定不要
+                Text(state.pausedFormattedTime)
+            }
+        }
+        .font(.system(size: 13, weight: .semibold, design: .rounded))
+        .monospacedDigit()
+        .multilineTextAlignment(.center)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+    }
+
+    // 表示中の桁数（9:59 / 59:59 / 9:59:59）に応じた幅。
+    // 桁が繰り上がった直後は次の更新までminimumScaleFactorで吸収する
+    private var timerWidth: CGFloat {
+        let elapsed = Date().timeIntervalSince(state.startDate)
+        switch elapsed {
+        case ..<600: return 33
+        case ..<3600: return 41
+        default: return 56
+        }
     }
 }
 
@@ -140,16 +174,15 @@ struct LockScreenLiveActivityView: View {
         ZStack(alignment: .bottomTrailing) {
             // 教材カラーに溶け込む透かしシンボル
             Image(systemName: "book.fill")
-                .font(.system(size: 96, weight: .bold))
+                .font(.system(size: 68, weight: .bold))
                 .foregroundStyle(.white.opacity(0.08))
                 .rotationEffect(.degrees(-14))
-                .offset(x: 18, y: 24)
+                .offset(x: 14, y: 18)
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center) {
                     Text(context.attributes.subjectName)
-                        .font(.title3)
-                        .fontWeight(.bold)
+                        .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -161,11 +194,12 @@ struct LockScreenLiveActivityView: View {
                 }
 
                 ElapsedTimeText(state: context.state, alignment: .leading)
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .opacity(context.state.isRunning ? 1.0 : 0.65)
             }
-            .padding(20)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
         .background(
             LinearGradient(
