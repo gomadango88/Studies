@@ -1,5 +1,8 @@
 //
-// StudiesLiveActivityLiveActivity.swift（今日の合計データ対応版）
+// StudiesLiveActivityLiveActivity.swift
+//
+// 教材名とストップウォッチ経過時間を表示するLive Activity。
+// 実行中はText(timerInterval:)によるOS自動更新、一時停止中は静的表示。
 //
 
 import ActivityKit
@@ -11,153 +14,149 @@ struct StudiesLiveActivityLiveActivity: Widget {
         ActivityConfiguration(for: StudyActivityAttributes.self) { context in
             LockScreenLiveActivityView(context: context)
         } dynamicIsland: { context in
-            DynamicIsland {
-                // 適切な余白を追加
-                DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 6) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color(hex: context.attributes.subjectColor) ?? .blue)
-                            .frame(width: 3, height: 35)
+            let subjectColor = Color(hex: context.attributes.subjectColor) ?? .accentColor
 
-                        VStack(alignment: .leading, spacing: 1) {
+            return DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    HStack(spacing: 10) {
+                        SubjectIconView(color: subjectColor, size: 36, symbolSize: 16)
+
+                        VStack(alignment: .leading, spacing: 2) {
                             Text(context.attributes.subjectName)
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .minimumScaleFactor(0.8)
 
-                            Text("学習中")
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
+                            StatusLabel(isRunning: context.state.isRunning)
                         }
                     }
-                    .padding(.leading, 8) // 左側の余白
-                    .padding(.vertical, 4)
+                    .padding(.leading, 4)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("今日の合計")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .foregroundColor(.secondary)
-
-                        // 実際のデータを使用
-                        Text(context.state.todayTotalTime)
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundColor(.primary)
-                    }
-                    .padding(.trailing, 8) // 右側の余白
-                    .padding(.vertical, 4)
+                    ElapsedTimeText(state: context.state)
+                        .font(.system(size: 28, weight: .semibold, design: .rounded))
+                        .foregroundStyle(context.state.isRunning ? subjectColor : .secondary)
+                        .frame(maxHeight: .infinity, alignment: .center)
+                        .padding(.trailing, 4)
                 }
-
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(spacing: 3) {
-                        studyTimeText(for: context.state)
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                            .foregroundColor(.primary)
-
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(context.state.isRunning ? .green : .orange)
-                                .frame(width: 5, height: 5)
-
-                            Text(context.state.isRunning ? "実行中" : "一時停止")
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                                .foregroundColor(context.state.isRunning ? .green : .orange)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // bottomセクションを削除（プログレスバー不要）
-
             } compactLeading: {
-                Circle()
-                    .fill(Color(hex: context.attributes.subjectColor) ?? .blue)
-                    .frame(width: 22, height: 22)
-                    .overlay(
-                        Image(systemName: context.state.isRunning ? "play.fill" : "pause.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.white)
-                    )
+                Image(systemName: context.state.isRunning ? "book.fill" : "pause.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(subjectColor)
             } compactTrailing: {
-                studyTimeText(for: context.state)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
+                ElapsedTimeText(state: context.state)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(context.state.isRunning ? subjectColor : .secondary)
+                    .frame(maxWidth: 60)
             } minimal: {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: context.attributes.subjectColor) ?? .blue)
-                        .frame(width: 22, height: 22)
-
-                    Image(systemName: context.state.isRunning ? "play.fill" : "pause.fill")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(.white)
-                }
+                Image(systemName: context.state.isRunning ? "book.fill" : "pause.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(subjectColor)
             }
+            .keylineTint(subjectColor)
         }
         .configurationDisplayName("学習記録")
         .description("学習時間を追跡します。")
     }
 }
 
-// MARK: - Time Display Helper
-// 実行中はOSが自動更新するTimer表示、一時停止中は固定した時間を表示する
-@ViewBuilder
-func studyTimeText(for state: StudyActivityAttributes.ContentState) -> some View {
-    if state.isRunning {
-        Text(timerInterval: state.startDate...state.timerRangeEnd, countsDown: false)
-    } else {
-        Text(state.pausedFormattedTime)
+// MARK: - Elapsed Time
+
+/// 実行中はOSが自動更新するタイマー表示、一時停止中は固定した時間を表示する
+struct ElapsedTimeText: View {
+    let state: StudyActivityAttributes.ContentState
+
+    var body: some View {
+        Group {
+            if state.isRunning {
+                Text(timerInterval: state.startDate...state.timerRangeEnd, countsDown: false)
+            } else {
+                Text(state.pausedFormattedTime)
+            }
+        }
+        .monospacedDigit()
+        .multilineTextAlignment(.trailing)
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+    }
+}
+
+// MARK: - Subject Icon
+
+/// 教材カラーのグラデーションを敷いたアイコンタイル
+struct SubjectIconView: View {
+    let color: Color
+    let size: CGFloat
+    let symbolSize: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(color.gradient)
+
+            Image(systemName: "book.fill")
+                .font(.system(size: symbolSize, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+        .frame(width: size, height: size)
+    }
+}
+
+// MARK: - Status Label
+
+struct StatusLabel: View {
+    let isRunning: Bool
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: isRunning ? "play.fill" : "pause.fill")
+                .font(.system(size: 8, weight: .bold))
+
+            Text(isRunning ? "学習中" : "一時停止")
+                .font(.caption2)
+                .fontWeight(.medium)
+        }
+        .foregroundStyle(.secondary)
     }
 }
 
 // MARK: - Lock Screen View
+
 struct LockScreenLiveActivityView: View {
     let context: ActivityViewContext<StudyActivityAttributes>
 
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(hex: context.attributes.subjectColor) ?? .blue)
-                    .frame(width: 4, height: 16)
+    private var subjectColor: Color {
+        Color(hex: context.attributes.subjectColor) ?? .accentColor
+    }
 
+    var body: some View {
+        HStack(spacing: 14) {
+            SubjectIconView(color: subjectColor, size: 44, symbolSize: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(context.attributes.subjectName)
                     .font(.headline)
-                    .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                Spacer()
-
-                Text(context.state.isRunning ? "学習中" : "一時停止")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                StatusLabel(isRunning: context.state.isRunning)
             }
 
-            HStack {
-                studyTimeText(for: context.state)
-                    .font(.system(.title, design: .rounded))
-                    .fontWeight(.bold)
-                    .monospacedDigit()
+            Spacer(minLength: 12)
 
-                Spacer()
-
-                Image(systemName: context.state.isRunning ? "play.circle" : "pause.circle")
-                    .font(.title2)
-                    .foregroundColor(context.state.isRunning ? .green : .orange)
-            }
+            ElapsedTimeText(state: context.state)
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
+                .foregroundStyle(context.state.isRunning ? .primary : .secondary)
         }
-        .padding()
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 }
 
 // MARK: - Color Extension
+
 extension Color {
     init?(hex: String) {
         let r, g, b: Double
@@ -180,7 +179,9 @@ extension Color {
     }
 }
 
-#Preview("Notification", as: .content, using: StudyActivityAttributes(
+// MARK: - Previews
+
+#Preview("Lock Screen", as: .content, using: StudyActivityAttributes(
     subjectName: "数学",
     subjectColor: "#0066CC",
     startTime: Date()
@@ -190,7 +191,11 @@ extension Color {
     StudyActivityAttributes.ContentState(
         startDate: Date().addingTimeInterval(-1234),
         pausedDate: nil,
-        isRunning: true,
-        todayTotalTime: "2:30:15" // プレビュー用のサンプル値
+        isRunning: true
+    )
+    StudyActivityAttributes.ContentState(
+        startDate: Date().addingTimeInterval(-1234),
+        pausedDate: Date(),
+        isRunning: false
     )
 }

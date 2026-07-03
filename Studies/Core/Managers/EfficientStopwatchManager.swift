@@ -101,22 +101,7 @@ class EfficientStopwatchManager: StopwatchProtocol {
         
         // 教材を設定
         setSubject(subject)
-        
-        // Live Activity開始前にtodayTotalTimeProviderが設定されていることを確認
-        if StudyActivityManager.shared.todayTotalTimeProvider == nil {
-            print("todayTotalTimeProvider is not set, Live Activity may show 0:00")
-            
-            // 少し待機してから再確認
-            Task {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5秒待機
-                if StudyActivityManager.shared.todayTotalTimeProvider != nil {
-                    print("todayTotalTimeProvider is now available")
-                } else {
-                    print("todayTotalTimeProvider still not available after wait")
-                }
-            }
-        }
-        
+
         // 既存のライブアクティビティをチェック
         if StudyActivityManager.shared.isActivityActive {
             print("Live Activity already active, updating instead of creating new one")

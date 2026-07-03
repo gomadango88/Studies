@@ -54,43 +54,6 @@ class StudySessionViewModel {
         self.subject = subject
         self.diContainer = container
         self.isInitialized = true
-
-        // StudyActivityManagerに今日の合計時間プロバイダーを設定
-        StudyActivityManager.shared.todayTotalTimeProvider = { [weak self] in
-            guard let self = self else { return "0:00" }
-            return await self.calculateFormattedTodayTotal()
-        }
-    }
-    
-    // 今日の合計時間をフォーマットして返すヘルパーメソッド
-    private func calculateFormattedTodayTotal() async -> String {
-        
-        guard let useCase = studyRecordUseCase else {
-            print("StudyRecordUseCase not available for today total")
-            return "0:00"
-        }
-        
-        do {
-            let today = Calendar.current.startOfDay(for: Date())
-            let allRecords = try await useCase.getActiveRecordsForDate(today)
-            let totalSeconds = allRecords.reduce(0) { $0 + $1.duration }
-            
-            let hours = Int(totalSeconds) / 3600
-            let minutes = Int(totalSeconds) % 3600 / 60
-            
-            let formattedTime: String
-            if hours > 0 {
-                formattedTime = String(format: "%d:%02d", hours, minutes)
-            } else {
-                formattedTime = String(format: "%d:%02d", 0, minutes)
-            }
-            
-            return formattedTime
-            
-        } catch {
-            print("Error calculating today total: \(error)")
-            return "0:00"
-        }
     }
     
     // MARK: - Computed Properties

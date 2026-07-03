@@ -16,8 +16,7 @@ class StudyActivityManager {
     
     private var currentActivity: Activity<StudyActivityAttributes>?
     private weak var stopwatchManager: StopwatchProtocol?
-    var todayTotalTimeProvider: (() async -> String)?
-    
+
     private init() {
     }
     
@@ -73,8 +72,7 @@ class StudyActivityManager {
             startTime: Date()
         )
 
-        let todayTotal = await getTodayTotalTime()
-        let contentState = makeContentState(from: stopwatch, todayTotal: todayTotal)
+        let contentState = makeContentState(from: stopwatch)
 
         do {
             // Text(timerInterval:)でOSが自動更新するため、定期的な再pushは不要（staleDateも設定しない）
@@ -101,38 +99,24 @@ class StudyActivityManager {
         print("Updating Live Activity - elapsed: \(stopwatch.elapsedTime), running: \(stopwatch.isRunning)")
 
         Task {
-            let todayTotal = await getTodayTotalTime()
-            let contentState = makeContentState(from: stopwatch, todayTotal: todayTotal)
+            let contentState = makeContentState(from: stopwatch)
             await activity.update(.init(state: contentState, staleDate: nil))
             print("Live Activity updated successfully")
         }
     }
 
     // 実行中はstartDateからの経過、一時停止中はpausedDate時点で固定した経過をLive Activity側で表示する
-    private func makeContentState(from stopwatch: StopwatchProtocol, todayTotal: String) -> StudyActivityAttributes.ContentState {
+    private func makeContentState(from stopwatch: StopwatchProtocol) -> StudyActivityAttributes.ContentState {
         let now = Date()
         let adjustedStart = now.addingTimeInterval(-stopwatch.elapsedTime)
         return StudyActivityAttributes.ContentState(
             startDate: adjustedStart,
             pausedDate: stopwatch.isRunning ? nil : now,
-            isRunning: stopwatch.isRunning,
-            todayTotalTime: todayTotal
+            isRunning: stopwatch.isRunning
         )
     }
 
-    private func getTodayTotalTime() async -> String {
-        print("Getting today total time...")
-        if let provider = todayTotalTimeProvider {
-            let result = await provider()
-            print("Today total from provider: \(result)")
-            return result
-        } else {
-            print("todayTotalTimeProvider is nil, returning default")
-            return "0:00"
-        }
-    }
 
-    
     /// Live Activityを終了
     func endActivity() async {
         print("StudyActivityManager endActivity called")

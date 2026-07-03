@@ -16,8 +16,6 @@ struct StudyActivityAttributes: ActivityAttributes {
         var pausedDate: Date?
         // 実行状態
         var isRunning: Bool
-        // 今日の合計時間（フォーマット済み文字列）
-        var todayTotalTime: String
 
         // 一時停止中の固定経過時間
         var pausedElapsedTime: TimeInterval {
