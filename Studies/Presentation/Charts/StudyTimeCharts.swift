@@ -30,6 +30,11 @@ struct StudyTimeCharts: View {
     // 直前に読み込んだスパン（切替時の表示位置維持の変換元として使用）
     @State private var lastLoadedSpan: ChartSpan = .sevenDays
 
+    // Y軸の表示上限（現在の表示ページに合わせて静止後に再計算する）
+    @State private var yAxisUpperBound: Double = 60
+    // Y軸再計算のデバウンス用タスク（スクロール中は毎フレーム走らせず、静止を待って1回だけ実行する）
+    @State private var yAxisRecalcTask: Task<Void, Never>?
+
     init() {
         _scrollPos = State(initialValue: Self.todayScrollPosition(for: .sevenDays))
     }
@@ -68,37 +73,82 @@ struct StudyTimeCharts: View {
         }
     }
 
-    // チャートのX軸ドメイン（スクロール可能な全範囲）。
-    // Swift Chartsはプロットされたデータからドメインを推定するため、明示指定しないと
-    // 最初の記録より前や最後の記録より後（今日・未来を含む）へスクロールできない。
-    // ヘルスケアと同様に「常に今日を含む1ページへ確実にスクロールできる」ように、
-    // 記録の有無に関わらず「最初の記録を含むページの先頭 〜 今日を含むページの末尾」を必ずカバーする。
-    // ドメインの起点は「今日のページ」からページ幅の整数倍だけ遡った位置に揃えることで、
+    // スクロール位置（＝表示ページの左端）が取り得る範囲。
+    // lower: 最初の記録を含むページの先頭（記録がなければ今日のページ）
+    // upper: 今日を含むページの先頭
+    // いずれも「今日のページ」からページ幅の整数倍だけ遡った位置に揃えることで、
     // ページングの境界が暦の境界（週始まり・日・月初）と一致するようにしている。
-    private var chartXDomain: ClosedRange<Date> {
+    private func scrollPositionBounds(for span: ChartSpan) -> (lower: Date, upper: Date) {
         let calendar = Calendar.current
         let pageStart = Self.todayScrollPosition(for: span)
         let earliest = min(sortedRowsForChart.first?.bucketDate ?? pageStart, pageStart)
 
         switch span {
         case .sevenDays:
-            let upper = calendar.date(byAdding: .day, value: 7, to: pageStart) ?? pageStart
             let days = max(calendar.dateComponents([.day], from: earliest, to: pageStart).day ?? 0, 0)
             let pages = (days + 6) / 7
             let lower = calendar.date(byAdding: .day, value: -7 * pages, to: pageStart) ?? earliest
-            return lower...upper
+            return (lower, pageStart)
         case .thirtyDays:
-            let upper = calendar.date(byAdding: .day, value: 30, to: pageStart) ?? pageStart
             let days = max(calendar.dateComponents([.day], from: earliest, to: pageStart).day ?? 0, 0)
             let pages = (days + 29) / 30
             let lower = calendar.date(byAdding: .day, value: -30 * pages, to: pageStart) ?? earliest
-            return lower...upper
+            return (lower, pageStart)
         case .twelveMonths:
-            let upper = calendar.date(byAdding: .month, value: 12, to: pageStart) ?? pageStart
             let months = max(calendar.dateComponents([.month], from: earliest, to: pageStart).month ?? 0, 0)
             let pages = (months + 11) / 12
             let lower = calendar.date(byAdding: .month, value: -12 * pages, to: pageStart) ?? earliest
-            return lower...upper
+            return (lower, pageStart)
+        }
+    }
+
+    // 任意の候補位置を「その日付を含むページの先頭」に揃えたうえで、
+    // スクロール可能範囲（最初の記録を含むページ〜今日のページ）内へクランプする。
+    // ページ境界の外や記録のない領域へスクロール位置が設定されるのを防ぐ。
+    private func clampedPageAlignedScrollPosition(_ candidate: Date, for span: ChartSpan) -> Date {
+        let calendar = Calendar.current
+        let bounds = scrollPositionBounds(for: span)
+
+        let aligned: Date
+        switch span {
+        case .sevenDays:
+            aligned = calendar.dateInterval(of: .weekOfYear, for: candidate)?.start
+                ?? calendar.startOfDay(for: candidate)
+        case .thirtyDays:
+            let day = calendar.startOfDay(for: candidate)
+            let offsetDays = calendar.dateComponents([.day], from: bounds.upper, to: day).day ?? 0
+            let pageIndex = Int(floor(Double(offsetDays) / 30.0))
+            aligned = calendar.date(byAdding: .day, value: pageIndex * 30, to: bounds.upper) ?? day
+        case .twelveMonths:
+            let month = calendar.date(from: calendar.dateComponents([.year, .month], from: candidate)) ?? candidate
+            let offsetMonths = calendar.dateComponents([.month], from: bounds.upper, to: month).month ?? 0
+            let pageIndex = Int(floor(Double(offsetMonths) / 12.0))
+            aligned = calendar.date(byAdding: .month, value: pageIndex * 12, to: bounds.upper) ?? month
+        }
+
+        return min(max(aligned, bounds.lower), bounds.upper)
+    }
+
+    // チャートのX軸ドメイン（スクロール可能な全範囲）。
+    // Swift Chartsはプロットされたデータからドメインを推定するため、明示指定しないと
+    // 最初の記録より前や最後の記録より後（今日・未来を含む）へスクロールできない。
+    // ヘルスケアと同様に、記録の有無に関わらず
+    // 「最初の記録を含むページの先頭 〜 今日を含むページの末尾」だけを正確にカバーし、
+    // それより先（過去・未来とも）へはスワイプしても跳ね戻るようにする。
+    private var chartXDomain: ClosedRange<Date> {
+        let calendar = Calendar.current
+        let bounds = scrollPositionBounds(for: span)
+
+        switch span {
+        case .sevenDays:
+            let upper = calendar.date(byAdding: .day, value: 7, to: bounds.upper) ?? bounds.upper
+            return bounds.lower...upper
+        case .thirtyDays:
+            let upper = calendar.date(byAdding: .day, value: 30, to: bounds.upper) ?? bounds.upper
+            return bounds.lower...upper
+        case .twelveMonths:
+            let upper = calendar.date(byAdding: .month, value: 12, to: bounds.upper) ?? bounds.upper
+            return bounds.lower...upper
         }
     }
 
@@ -252,6 +302,48 @@ struct StudyTimeCharts: View {
         }
     }
     
+    // 現在表示中のページ内で最も学習時間が長かったバケットの合計値をもとに、
+    // Y軸上限を再計算する（ヘルスケア準拠: スクロール中は据え置き、静止後に高さへフィットさせる）
+    private func recalculateYAxisDomain(animated: Bool) {
+        let calendar = Calendar.current
+        let (rangeStart, rangeEnd) = alignedVisibleRange()
+
+        var maxValue = 0.0
+        var current = rangeStart
+        while current < rangeEnd {
+            maxValue = max(maxValue, totalsByBucket[current] ?? 0.0)
+            switch span {
+            case .sevenDays, .thirtyDays:
+                current = calendar.date(byAdding: .day, value: 1, to: current)!
+            case .twelveMonths:
+                current = calendar.date(byAdding: .month, value: 1, to: current)!
+            }
+        }
+
+        // 最も高いバーの上に少し余白を残しつつ、データがないページでも
+        // グラフが極端に潰れないよう最低限の高さを確保する
+        let newUpperBound = max(maxValue * 1.2, 30)
+        guard abs(newUpperBound - yAxisUpperBound) > 0.5 else { return }
+
+        if animated {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                yAxisUpperBound = newUpperBound
+            }
+        } else {
+            yAxisUpperBound = newUpperBound
+        }
+    }
+
+    // スクロール中は毎フレーム呼ばれるため、その都度再計算せず一定時間の静止を待ってから実行する
+    private func scheduleYAxisRecalc() {
+        yAxisRecalcTask?.cancel()
+        yAxisRecalcTask = Task {
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            guard !Task.isCancelled else { return }
+            recalculateYAxisDomain(animated: true)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
@@ -401,6 +493,8 @@ struct StudyTimeCharts: View {
         .chartScrollTargetBehavior(HealthStylePagingBehavior(span: span))
         .chartXVisibleDomain(length: currentVisibleLength)
         .chartScrollPosition(x: $scrollPos)
+        // Y軸はスクロール中固定し、静止後（scheduleYAxisRecalc経由）に表示ページへフィットさせる
+        .chartYScale(domain: 0...yAxisUpperBound)
         .chartXAxis {
             span.axisMarks
         }
@@ -432,6 +526,9 @@ struct StudyTimeCharts: View {
             } else {
                 lastHapticBucketDate = nil
             }
+        }
+        .onChange(of: scrollPos) { _, _ in
+            scheduleYAxisRecalc()
         }
     }
     
@@ -474,14 +571,23 @@ struct StudyTimeCharts: View {
             }
 
             await MainActor.run {
+                let isFirstLoad = !hasLoadedOnce
                 applyLoadedRows(newRows)
                 isLoading = false
-                if !hasLoadedOnce {
+                if isFirstLoad {
                     // 初回ロード時のみ「今日が右端」の位置へ調整する。
                     // スパン切替時はすでにこの関数の冒頭で位置を維持済みのため上書きしない。
                     scrollPos = Self.todayScrollPosition(for: span)
                     hasLoadedOnce = true
+                } else {
+                    // データの読み込みでスクロール可能範囲（最初の記録の位置）が確定・変化した後も、
+                    // 現在位置がページ境界と可動範囲の中に収まるよう矯正する
+                    scrollPos = clampedPageAlignedScrollPosition(scrollPos, for: span)
                 }
+                // データ読み込み直後は「静止後」の一種として即座にY軸を合わせる（待たずに反映）。
+                // 初回表示時はアニメーションさせず、切替・再読み込み時のみ滑らかに遷移させる。
+                yAxisRecalcTask?.cancel()
+                recalculateYAxisDomain(animated: !isFirstLoad)
             }
         } catch {
             await MainActor.run {
@@ -522,8 +628,9 @@ struct StudyTimeCharts: View {
         }
     }
 
-    // スパン切替時、切替前に見ていた表示範囲の代表日（起点＝左端）を
-    // 新しいスパンの表示範囲に変換する（例: 週→月なら、見ていた週を含む30日間を表示）
+    // スパン切替時、切替前に見ていた表示範囲の代表日（中心付近）を含むページへ変換する
+    // （例: 週→月なら、見ていた週を含む30日ページを表示）。
+    // 変換結果は新しいスパンのページ境界に揃え、スクロール可能範囲内へクランプする。
     private func convertScrollPosition(_ position: Date, from oldSpan: ChartSpan, to newSpan: ChartSpan) -> Date {
         guard oldSpan != newSpan else { return position }
 
@@ -541,23 +648,7 @@ struct StudyTimeCharts: View {
         }
         let anchorDate = position.addingTimeInterval(oldVisibleLength / 2)
 
-        switch newSpan {
-        case .sevenDays:
-            // アンカー日を含む週（システム設定の週始まり基準）の先頭＝ページ境界に揃える
-            return calendar.dateInterval(of: .weekOfYear, for: anchorDate)?.start
-                ?? calendar.startOfDay(for: anchorDate)
-        case .thirtyDays:
-            // 「今日のページ」を基準とした30日ページの区切りに揃え、アンカー日を含むページを表示する
-            let todayPageStart = Self.todayScrollPosition(for: .thirtyDays)
-            let anchorDay = calendar.startOfDay(for: anchorDate)
-            let offsetDays = calendar.dateComponents([.day], from: todayPageStart, to: anchorDay).day ?? 0
-            let pageIndex = min(Int(floor(Double(offsetDays) / 30.0)), 0)
-            return calendar.date(byAdding: .day, value: pageIndex * 30, to: todayPageStart) ?? anchorDay
-        case .twelveMonths:
-            let anchorMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: anchorDate)) ?? anchorDate
-            let idealPos = calendar.date(byAdding: .month, value: -11, to: anchorMonthStart) ?? anchorMonthStart
-            return idealPos
-        }
+        return clampedPageAlignedScrollPosition(anchorDate, for: newSpan)
     }
 
     // MARK: - Selection Helpers & Overlay
@@ -571,16 +662,26 @@ struct StudyTimeCharts: View {
         }
     }
     
-    private func tooltipTitle(for bucketDate: Date) -> String {
+    // DateFormatterの生成コストを避けるため使い回す（選択中はドラッグ移動のたびに呼ばれる）
+    private static let dayTooltipFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "yyyy年M月d日(E)"
+        return formatter
+    }()
+    private static let monthTooltipFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "yyyy年M月"
+        return formatter
+    }()
+
+    private func tooltipTitle(for bucketDate: Date) -> String {
         switch span {
         case .sevenDays, .thirtyDays:
-            formatter.dateFormat = "yyyy年M月d日(E)"
-            return formatter.string(from: bucketDate)
+            return Self.dayTooltipFormatter.string(from: bucketDate)
         case .twelveMonths:
-            formatter.dateFormat = "yyyy年M月"
-            return formatter.string(from: bucketDate)
+            return Self.monthTooltipFormatter.string(from: bucketDate)
         }
     }
     
@@ -726,10 +827,13 @@ private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
     nonisolated func updateTarget(_ target: inout ScrollTarget, context: ChartScrollTargetBehaviorContext) {
         switch span {
         case .sevenDays, .thirtyDays:
-            // 週・月表示: 1回のスワイプで必ず可視域ぴったり1ページ分だけめくれる
-            // 確定的なページング（UIScrollViewのisPagingEnabled相当）。
-            // ページ境界は chartXDomain の起点をページ幅の整数倍に揃えることで
-            // 暦の境界（週始まりの曜日・日境界）と一致させている。
+            // 週・月表示: 標準のページング挙動（フリック速度に応じて複数ページ動くこともある）。
+            //
+            // ジェスチャー開始位置を基準に「1ページを超える移動量だけ弱める」後処理を試みたが、
+            // システムが計算したスクロールの減速アニメーションと、後から書き換えた目標位置が
+            // 噛み合わずアニメーションがガクつく結果になったため撤回し、標準の挙動に戻している。
+            // スナップ先の感度調整とアニメーションの滑らかさを両立させるには、実機での
+            // 試行錯誤を伴う調整が必要と判断した。
             PagingScrollTargetBehavior().updateTarget(&target, context: context)
         case .twelveMonths:
             // 年表示: 月ごとに日数が異なるため固定長ページングでは月境界からずれてしまう。
@@ -740,6 +844,11 @@ private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
                 majorAlignment: .page
             ).updateTarget(&target, context: context)
         }
+
+        // 吸着先をスクロール可能範囲（chartXDomainが定める全ページ）内へクランプする。
+        // 最初の記録より前・今日のページより先へは吸着させず、端でのスワイプは跳ね戻る。
+        let maxOriginX = max(context.contentSize.width - context.containerSize.width, 0)
+        target.rect.origin.x = min(max(target.rect.origin.x, 0), maxOriginX)
     }
 }
 
@@ -888,11 +997,18 @@ enum ChartSpan: CaseIterable {
         }
     }
     
-    private func weekdayString(from date: Date) -> String {
+    // DateFormatterの生成はロケール初期化を伴い重いため、軸ラベル用に使い回す
+    // （スクロール中は軸ラベルが毎フレーム再評価されるため、ここでの生成コストが
+    // スクロールのもたつきに直結する）。
+    private static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ja_JP")
         formatter.dateFormat = "E"
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private func weekdayString(from date: Date) -> String {
+        Self.weekdayFormatter.string(from: date)
     }
     
     private func monthString(from date: Date) -> String {
