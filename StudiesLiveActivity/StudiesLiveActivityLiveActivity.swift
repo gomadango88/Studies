@@ -40,10 +40,12 @@ struct StudiesLiveActivityLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    // ヒーロー表示：中央に大きくタイマーを置く
+                    // ヒーロー表示：中央に大きくタイマーを置く。
+                    // 教材カラーが黒に近いと島の黒背景に埋もれるため常に白で表示する
                     ElapsedTimeText(state: context.state, alignment: .center)
                         .font(.system(size: 38, weight: .bold, design: .rounded))
-                        .foregroundStyle(context.state.isRunning ? subjectColor : .secondary)
+                        .foregroundStyle(.white)
+                        .opacity(context.state.isRunning ? 1.0 : 0.55)
                         .frame(maxWidth: .infinity)
                 }
             } compactLeading: {
