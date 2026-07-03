@@ -21,7 +21,7 @@
   - `WeeklyGoalScheduleView` → `Studies/Presentation/Views/Schedule/WeeklyGoalScheduleView.swift`(メインの `#Preview` も移動)
   - `ScheduleRowView` → `Studies/Presentation/Views/Schedule/ScheduleRowView.swift`
   - 任意: `WeeklyGoalScheduleView` 内の private `localizedWeekdays` は既存の `Calendar.localizedWeekdays()` と数学的に同一((firstWeekday+6)%7 ≡ firstWeekday-1)なので、extension呼び出しに置き換えて重複を削除してよい
-- [ ] **Phase 5**: 残ったエンティティを分割して元ファイルを解消
+- [x] **Phase 5**: 残ったエンティティを分割して元ファイルを解消
   - `git mv Studies/Presentation/Views/StudySchedule.swift Studies/Domain/Entities/StudySchedule.swift`(`StudySchedule` と `SubjectGoal` を残す)
   - `Weekday` + `Calendar.localizedWeekdays()` extension → `Studies/Domain/Entities/Weekday.swift`(新規)
   - `CodableColor` → `Studies/Domain/Entities/CodableColor.swift`(新規)
