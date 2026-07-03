@@ -1,14 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
-
-// MARK: - Protocol
-protocol ScheduleRepositoryProtocol {
-    func fetchAll() async throws -> [StudySchedule]
-    func upsert(_ schedule: StudySchedule) async throws
-    func delete(_ scheduleId: UUID) async throws
-    func toggleEnabled(_ id: UUID) async throws
-}
+import os
 
 // MARK: - Repository
 @MainActor
@@ -41,7 +34,7 @@ final class ScheduleRepository: ScheduleRepositoryProtocol {
         guard let orphans = try? ctx.fetch(descriptor), !orphans.isEmpty else { return }
         orphans.forEach { ctx.delete($0) }
         try? ctx.save()
-        print("孤児SubjectGoalModelを削除: \(orphans.count)件")
+        Logger.data.debug("孤児SubjectGoalModelを削除: \(orphans.count)件")
     }
 
     func upsert(_ schedule: StudySchedule) async throws {
