@@ -140,10 +140,10 @@ class EfficientStopwatchManager: StopwatchProtocol {
     
     // MARK: - Private Methods
 
-    // Dynamic Islandコンパクト表示の段階（m:ss → 分 → 時間1桁 → 時間2桁）が
-    // 切り替わる境界をまたいだら、Live Activityを再描画して表示形式を更新する
+    // Dynamic Islandコンパクト表示のタイマー幅（9:59 / 59:59 / 9:59:59）が
+    // 切り替わる境界をまたいだら、Live Activityを再描画して幅を追従させる
     private func refreshActivityOnDisplayBoundary(previous: TimeInterval, current: TimeInterval) {
-        let displayBoundaries: [TimeInterval] = [600, 3600, 36000]
+        let displayBoundaries: [TimeInterval] = [600, 3600]
         if displayBoundaries.contains(where: { previous < $0 && current >= $0 }) {
             activityManager?.updateActivity()
         }
