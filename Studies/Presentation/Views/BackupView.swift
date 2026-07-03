@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import os
 
 struct BackupView: View {
     @Environment(\.modelContext) private var modelContext
@@ -163,12 +164,11 @@ struct BackupView: View {
         ) { result in
             backupStatus = .exporting
             switch result {
-            case .success(let url):
+            case .success:
                 backupStatus = .completed
-                print("バックアップファイルのエクスポート完了: \(url)")
             case .failure(let error):
                 backupStatus = .failed("エクスポートエラー: \(error.localizedDescription)")
-                print("バックアップエラー: \(error)")
+                Logger.ui.error("バックアップエラー: \(error)")
             }
         }
     }
@@ -206,15 +206,11 @@ struct BackupView: View {
                 self.backupStatus = .ready
             }
             
-            let activeCount = recordBackups.filter { !$0.isArchived }.count
-            let archivedCount = recordBackups.filter { $0.isArchived }.count
-            print("バックアップデータの準備完了: \(subjects.count)教材, \(recordBackups.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount)), \(achievementBackups.count)達成記録, \(scheduleBackups.count)スケジュール")
-            
         } catch {
             await MainActor.run {
                 self.backupStatus = .failed("データ取得エラー: \(error.localizedDescription)")
             }
-            print("バックアップデータ準備エラー: \(error)")
+            Logger.ui.error("バックアップデータ準備エラー: \(error)")
         }
     }
     

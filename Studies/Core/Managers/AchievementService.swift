@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftData
+import os
 
 // 達成状況(DailyAchievementModel)のアップサートと連続達成日数の計算を一箇所に集約
 @MainActor
@@ -42,7 +43,7 @@ enum AchievementService {
             }
             try context.save()
         } catch {
-            print("[AchievementService] upsertAchievement error: \(error)")
+            Logger.data.error("upsertAchievement error: \(error)")
         }
     }
 

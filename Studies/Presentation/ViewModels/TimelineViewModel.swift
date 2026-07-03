@@ -15,6 +15,7 @@
 
 import Foundation
 import SwiftUI
+import os
 
 @MainActor
 @Observable
@@ -57,7 +58,7 @@ class TimelineViewModel {
             
         } catch {
             errorMessage = "データの読み込みに失敗しました: \(error.localizedDescription)"
-            print("Error loading timeline  \(error)")
+            Logger.ui.error("Error loading timeline: \(error)")
         }
         
         isLoading = false
@@ -66,18 +67,17 @@ class TimelineViewModel {
     // TimelineViewModel.swift に追加
     func deleteRecord(_ record: StudyRecord) async {
         guard let studyRecordUseCase = studyRecordUseCase else {
-            print("StudyRecordUseCase is nil")
             return
         }
-        
+
         do {
             try await studyRecordUseCase.deleteRecord(record)
-            
+
             // UIを更新するために記録を再読み込み
             await loadAllRecords()
-            
+
         } catch {
-            print("Error deleting record: \(error)")
+            Logger.ui.error("Error deleting record: \(error)")
             // エラーハンドリング（必要に応じてエラーメッセージを表示）
         }
     }
@@ -85,7 +85,6 @@ class TimelineViewModel {
     // 手動追加用の作成メソッド
     func addRecord(subjectId: UUID, studyDate: Date, duration: TimeInterval) async {
         guard let studyRecordUseCase = studyRecordUseCase else {
-            print("StudyRecordUseCase is nil")
             return
         }
         do {
@@ -97,7 +96,7 @@ class TimelineViewModel {
             // UI更新のため再読み込み
             await loadAllRecords()
         } catch {
-            print("Error creating record: \(error)")
+            Logger.ui.error("Error creating record: \(error)")
         }
     }
     

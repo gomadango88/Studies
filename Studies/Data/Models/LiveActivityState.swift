@@ -7,6 +7,9 @@
 
 import Foundation
 import SwiftUI
+import os
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Studies", category: "liveActivity")
 
 // Live Activity専用の軽量データ構造
 struct LiveActivityState: Codable {
@@ -50,25 +53,21 @@ class LiveActivitySessionManager {
         
         if let encoded = try? JSONEncoder().encode(state) {
             liveActivitySessionData = encoded
-            print("Live Activity state saved")
         } else {
-            print("Failed to save Live Activity state")
+            logger.error("Failed to save Live Activity state")
         }
     }
-    
+
     func getLiveActivityState() -> LiveActivityState? {
         guard let data = liveActivitySessionData,
               let state = try? JSONDecoder().decode(LiveActivityState.self, from: data) else {
-            print("No Live Activity state found")
             return nil
         }
-        
-        print("Found Live Activity state: \(state.subjectName)")
+
         return state
     }
-    
+
     func clearLiveActivityState() {
-        print("Clearing Live Activity state")
         liveActivitySessionData = nil
     }
     

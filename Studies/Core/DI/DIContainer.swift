@@ -10,6 +10,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import os
 
 @Observable
 class DIContainer {
@@ -43,11 +44,10 @@ class DIContainer {
 
             do {
                 _modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
-                print("ModelContainer created successfully")
             } catch {
                 // 永続ストアの作成に失敗した場合でも、同じスキーマのインメモリストアに
                 // フォールバックすることで、以後の全fetch/insertがクラッシュするのを防ぐ
-                print("ModelContainer initialization failed, falling back to in-memory store: \(error)")
+                Logger.data.error("ModelContainer initialization failed, falling back to in-memory store: \(error)")
                 isPersistentStoreUnavailable = true
                 let inMemoryConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
                 do {

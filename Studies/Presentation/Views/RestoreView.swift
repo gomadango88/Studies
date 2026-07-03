@@ -6,6 +6,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import os
 
 struct RestoreView: View {
     @Environment(\.modelContext) private var modelContext
@@ -226,7 +227,7 @@ struct RestoreView: View {
             await MainActor.run {
                 restoreStatus = .failed("ファイルへのアクセス権限を取得できませんでした")
             }
-            print("セキュリティスコープアクセス失敗")
+            Logger.data.error("セキュリティスコープアクセス失敗")
             return
         }
         
@@ -247,15 +248,11 @@ struct RestoreView: View {
                 self.restoreStatus = .ready
             }
             
-            let activeCount = backup.studyRecords.filter { !$0.isArchived }.count
-            let archivedCount = backup.studyRecords.filter { $0.isArchived }.count
-            print("バックアップファイルの読み込み完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount))")
-            
         } catch {
             await MainActor.run {
                 restoreStatus = .failed("ファイル解析エラー: \(error.localizedDescription)")
             }
-            print("バックアップファイル読み込みエラー: \(error)")
+            Logger.data.error("バックアップファイル読み込みエラー: \(error)")
         }
     }
     
@@ -356,15 +353,11 @@ struct RestoreView: View {
                 restoreStatus = .completed
             }
             
-            let activeCount = backup.studyRecords.filter { !$0.isArchived }.count
-            let archivedCount = backup.studyRecords.filter { $0.isArchived }.count
-            print("データ復元完了: \(backup.subjects.count)教材, \(backup.studyRecords.count)記録 (アクティブ: \(activeCount), アーカイブ: \(archivedCount)), \(backup.dailyAchievements?.count ?? 0)達成記録, \(backup.schedules?.count ?? 0)スケジュール")
-            
         } catch {
             await MainActor.run {
                 restoreStatus = .failed("復元エラー: \(error.localizedDescription)")
             }
-            print("データ復元エラー: \(error)")
+            Logger.data.error("データ復元エラー: \(error)")
         }
     }
     

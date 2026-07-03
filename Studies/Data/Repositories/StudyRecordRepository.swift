@@ -5,6 +5,7 @@
 
 import Foundation
 import SwiftData
+import os
 
 @MainActor
 class StudyRecordRepository: StudyRecordRepositoryProtocol {
@@ -77,8 +78,6 @@ class StudyRecordRepository: StudyRecordRepositoryProtocol {
     
     // ← 修正: isArchivedプロパティの更新を追加
     func update(_ record: StudyRecord) async throws {
-        print("📝 Repository: Updating record \(record.id) with isArchived: \(record.isArchived)")
-        
         let context = modelContainer.mainContext
         let recordId = record.id // 明示的に変数に格納
         let descriptor = FetchDescriptor<StudyRecordModel>(
@@ -92,12 +91,10 @@ class StudyRecordRepository: StudyRecordRepositoryProtocol {
             model.studyDate = record.studyDate
             model.duration = record.duration
             model.isArchived = record.isArchived  // ← 追加: これが抜けていました！
-            
-            print("📝 Repository: Updated model isArchived to: \(model.isArchived)")
+
             try context.save()
-            print("📝 Repository: Changes saved successfully")
         } else {
-            print("📝 Repository: Record not found for update")
+            Logger.data.warning("Record not found for update: \(recordId)")
         }
     }
     

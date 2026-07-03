@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import os
 
 @MainActor
 class SubjectRepository: SubjectRepositoryProtocol {
@@ -23,27 +24,14 @@ class SubjectRepository: SubjectRepositoryProtocol {
         )
         
         let models = try context.fetch(descriptor)
-        
-        // isPinnedプロパティが存在する
-        print("Repository fetchAll: Found \(models.count) models")
-        
-        let subjects = models.map { model in
-            print("Model: \(model.name), isPinned: \(model.isPinned)")
-            return model.toDomainEntity()
-        }
-        
-        let pinnedCount = subjects.filter { $0.isPinned }.count
-        print("Repository fetchAll: Mapped \(subjects.count) subjects, \(pinnedCount) pinned")
-        
+        let subjects = models.map { $0.toDomainEntity() }
         return subjects
     }
-    
+
     func save(_ subject: Subject) async throws {
         let context = modelContainer.mainContext
         let model = SubjectModel.fromDomainEntity(subject)
-        
-        print("Repository save: \(subject.name), isPinned: \(subject.isPinned)")
-        
+
         context.insert(model)
         try context.save()
     }
@@ -60,18 +48,14 @@ class SubjectRepository: SubjectRepositoryProtocol {
         
         let models = try context.fetch(descriptor)
         if let model = models.first {
-            print("Repository update: \(subject.name), isPinned: \(subject.isPinned)")
-            
             model.name = subject.name
             model.color = subject.color
             model.sortOrder = subject.sortOrder
             model.isPinned = subject.isPinned  // エラーが解消される
-            
+
             try context.save()
-            
-            print("Repository update completed for: \(subject.name)")
         } else {
-            print("Repository update: Subject not found with id: \(subjectId)")
+            Logger.data.warning("Subject not found with id: \(subjectId)")
         }
     }
     

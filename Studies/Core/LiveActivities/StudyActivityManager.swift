@@ -8,6 +8,7 @@
 import Foundation
 import ActivityKit
 import SwiftUI
+import os
 
 @MainActor
 @Observable
@@ -27,28 +28,21 @@ class StudyActivityManager {
     
     ///アプリ起動時全ライブアクティビティクリア
     func clearAllActivitiesOnAppLaunch() async {
-        print("Clearing all Live Activities on app launch")
         // 現在のアクティビティを終了
         if let currentActivity = currentActivity {
-            print("Ending current activity")
             await currentActivity.end(nil, dismissalPolicy: .immediate)
             self.currentActivity = nil
         }
-        
+
         // すべてのアクティブなアクティビティを取得して終了
         let activities = Activity<StudyActivityAttributes>.activities
-        print("Found \(activities.count) active activities to clear")
         for activity in activities {
-            print("Ending activity: \(activity.id)")
             await activity.end(nil, dismissalPolicy: .immediate)
         }
-
-        print("All Live Activities cleared")
     }
 
     /// Live Activityを開始
     func startActivity(for subject: Subject, stopwatchManager: StopwatchProtocol) {
-        print("StudyActivityManager startActivity for subject: \(subject.name)")
         startTask?.cancel()
         startTask = Task {
             //既存のアクティビティをすべてクリア
@@ -76,11 +70,9 @@ class StudyActivityManager {
     private func createNewActivity(for subject: Subject, stopwatchManager: StopwatchProtocol) async {
         self.stopwatchManager = stopwatchManager
         guard let stopwatch = self.stopwatchManager else {
-            print("stopwatchManager is nil")
+            Logger.liveActivity.warning("stopwatchManager is nil, cannot create Live Activity")
             return
         }
-
-        print("Creating new Live Activity - elapsed: \(stopwatch.elapsedTime), running: \(stopwatch.isRunning)")
 
         let attributes = StudyActivityAttributes(
             subjectId: subject.id,
@@ -99,9 +91,8 @@ class StudyActivityManager {
             )
 
             currentActivity = activity
-            print("Live Activity started")
         } catch {
-            print("Live Activity start error: \(error)")
+            Logger.liveActivity.error("Live Activity start error: \(error)")
         }
     }
 
@@ -109,16 +100,12 @@ class StudyActivityManager {
     func updateActivity() {
         guard let activity = currentActivity,
               let stopwatch = stopwatchManager else {
-            print("updateActivity: activity or stopwatch is nil")
             return
         }
-
-        print("Updating Live Activity - elapsed: \(stopwatch.elapsedTime), running: \(stopwatch.isRunning)")
 
         Task {
             let contentState = makeContentState(from: stopwatch)
             await activity.update(.init(state: contentState, staleDate: nil))
-            print("Live Activity updated successfully")
         }
     }
 
@@ -136,7 +123,6 @@ class StudyActivityManager {
 
     /// Live Activityを終了
     func endActivity() async {
-        print("StudyActivityManager endActivity called")
         // 開始処理が実行中なら中断を要求し、完了を待ってから終了する。
         // これを待たないと、終了後に開始処理が新しいアクティビティを作って取り残される
         startTask?.cancel()
@@ -145,7 +131,6 @@ class StudyActivityManager {
 
         if let activity = currentActivity {
             await activity.end(nil, dismissalPolicy: .immediate)
-            print("Live Activity ended")
         }
 
         // 参照が切れたまま残っているアクティビティも確実に掃除する
@@ -155,7 +140,6 @@ class StudyActivityManager {
 
         currentActivity = nil
         stopwatchManager = nil
-        print("Live Activity end completed")
     }
 
     func endActivity() {
@@ -168,7 +152,6 @@ class StudyActivityManager {
     
     /// リセット時の処理
     func handleReset() {
-        print("StudyActivityManager handleReset")
         Task {
             await endActivity()
         }

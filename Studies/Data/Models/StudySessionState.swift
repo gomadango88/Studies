@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import os
 
 struct StudySessionState: Codable {
     let subjectId: UUID
@@ -42,8 +43,6 @@ class StudySessionManager {
     private init() {}
     
     func saveActiveSession(subject: Subject, stopwatchManager: EfficientStopwatchManager) {
-        print("Saving active study session for: \(subject.name)")
-        
         let colorHex = "#0066CC" // 簡易色
         
         let state = StudySessionState(
@@ -58,25 +57,21 @@ class StudySessionManager {
         
         if let encoded = try? JSONEncoder().encode(state) {
             activeStudySessionData = encoded
-            print("Study session state saved")
         } else {
-            print("Failed to encode study session state")
+            Logger.session.error("Failed to encode study session state")
         }
     }
-    
+
     func getActiveSession() -> StudySessionState? {
         guard let data = activeStudySessionData,
               let state = try? JSONDecoder().decode(StudySessionState.self, from: data) else {
-            print("No active study session found")
             return nil
         }
-        
-        print("Found active study session: \(state.subjectName)")
+
         return state
     }
-    
+
     func clearActiveSession() {
-        print("Clearing active study session")
         activeStudySessionData = nil
     }
     

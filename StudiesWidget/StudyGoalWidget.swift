@@ -269,15 +269,8 @@ struct StudyGoalProvider: TimelineProvider {
     
     // 🔥 「今日の学習」合計データ取得メソッド（目標未設定対応版）
     private func fetchCurrentStudyGoalData() async -> StudyGoalEntry {
-        print("🔍 Widget: Fetching today's total study goal data...")
-        print("🔍 Widget: App Groups ID being used: \(AppGroupConstants.identifier)")
-        
         // WidgetDataManagerから合計データを取得
         if let widgetData = WidgetDataManager.shared.loadWidgetData() {
-            print("✅ Widget: Successfully loaded total data")
-            print("✅ Widget: Total progress: \(widgetData.todayMinutes)/\(widgetData.dailyGoal) minutes")
-            print("✅ Widget: Streak: \(widgetData.streakDays) days")
-            
             // 🔥 有効な目標があるかチェック
             let hasValidGoal = widgetData.dailyGoal > 0
             
@@ -290,9 +283,6 @@ struct StudyGoalProvider: TimelineProvider {
                 hasValidGoal: hasValidGoal
             )
         } else {
-            print("⚠️ Widget: No data found in WidgetDataManager")
-            print("⚠️ Widget: Showing goal not set state")
-            
             // 🔥 データがない場合は「目標未設定」状態
             return StudyGoalEntry(
                 date: Date(),

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import os
 
 // MARK: - データモデル
 struct MonthlySummary: Identifiable, Equatable {
@@ -81,24 +82,19 @@ class StudyRecordListViewModel: ObservableObject {
     }
     
     func loadData() async {
-        print("ViewModel: Starting data load")
         isLoading = true
         do {
             // アクティブとアーカイブの両方を読み込み
             let activeRecords = try await studyRecordUseCase.getActiveRecords()
             let archivedRecords = try await studyRecordUseCase.getArchivedRecords()
             let subjects = try await subjectUseCase.getAllSubjects()
-            
-            print("ViewModel: Loaded \(activeRecords.count) active records, \(archivedRecords.count) archived records")
-            
+
             // アクティブデータの月別サマリー作成
             activeMonthlySummaries = createMonthlySummaries(from: activeRecords, subjects: subjects, isArchived: false)
             // アーカイブデータの月別サマリー作成
             archivedMonthlySummaries = createMonthlySummaries(from: archivedRecords, subjects: subjects, isArchived: true)
-            
-            print("ViewModel: Created \(activeMonthlySummaries.count) active summaries, \(archivedMonthlySummaries.count) archived summaries")
         } catch {
-            print("ViewModel: データ読み込みエラー: \(error)")
+            Logger.data.error("データ読み込みエラー: \(error)")
         }
         isLoading = false
     }
@@ -141,50 +137,38 @@ class StudyRecordListViewModel: ObservableObject {
         }
     }
     
-    // ← 修正: アーカイブ機能にデバッグログを追加
     func archiveMonth(_ summary: MonthlySummary) async {
-        print("ViewModel: Starting archive process for month: \(summary.monthYear)")
         do {
             try await studyRecordUseCase.archiveRecordsByMonth(summary.monthYear)
-            print("ViewModel: Archive completed successfully for month: \(summary.monthYear)")
             await loadData()
-            print("ViewModel: Data reloaded after archive")
         } catch {
-            print("ViewModel: Archive error for month \(summary.monthYear): \(error)")
+            Logger.data.error("Archive error for month \(summary.monthYear): \(error)")
         }
     }
-    
-    // ← 修正: アーカイブ解除機能にデバッグログを追加
+
     func unarchiveMonth(_ summary: MonthlySummary) async {
-        print("ViewModel: Starting unarchive process for month: \(summary.monthYear)")
         do {
             try await studyRecordUseCase.unarchiveRecordsByMonth(summary.monthYear)
-            print("ViewModel: Unarchive completed successfully for month: \(summary.monthYear)")
             await loadData()
-            print("ViewModel: Data reloaded after unarchive")
         } catch {
-            print("ViewModel: Unarchive error for month \(summary.monthYear): \(error)")
+            Logger.data.error("Unarchive error for month \(summary.monthYear): \(error)")
         }
     }
-    
+
     func deleteMonth(_ summary: MonthlySummary) async {
-        print("ViewModel: Starting delete process for month: \(summary.monthYear)")
         do {
             let allRecords = try await studyRecordUseCase.getAllRecords()
             let recordsToDelete = allRecords.filter { record in
                 monthFormatter.string(from: record.studyDate) == summary.monthYear
             }
-            
-            print("ViewModel: Found \(recordsToDelete.count) records to delete")
-            
+
             for record in recordsToDelete {
                 try await studyRecordUseCase.deleteRecord(record)
             }
-            
+
             await loadData()
-            print("ViewModel: Delete completed for month: \(summary.monthYear)")
         } catch {
-            print("ViewModel: Delete error for month \(summary.monthYear): \(error)")
+            Logger.data.error("Delete error for month \(summary.monthYear): \(error)")
         }
     }
 }
@@ -343,8 +327,7 @@ struct StudyRecordListView: View {
     
     private func performAction(_ action: ActionType) async {
         guard let month = monthToProcess else { return }
-        print("View: Performing action \(action) for month \(month.monthYear)")
-        
+
         switch action {
         case .archive:
             await viewModel.archiveMonth(month)

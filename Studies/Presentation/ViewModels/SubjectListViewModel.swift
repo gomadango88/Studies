@@ -4,6 +4,7 @@
 
 import Foundation
 import SwiftUI
+import os
 
 @MainActor
 @Observable
@@ -123,7 +124,7 @@ class SubjectListViewModel {
             await loadSubjects()
             
         } catch {
-            print("Failed to toggle pin: \(error)")
+            Logger.ui.error("Failed to toggle pin: \(error)")
             errorMessage = "ピン留めの更新に失敗しました: \(error.localizedDescription)"
         }
     }
@@ -140,9 +141,7 @@ class SubjectListViewModel {
     // 修正版: 正確な並び替え処理
     private func simpleMoveWithinSection(subject: Subject, to destinationIndex: Int, isPinned: Bool) async {
         guard let useCase = subjectUseCase else { return }
-        
-        print("Starting section move: \(subject.name) to index \(destinationIndex), isPinned: \(isPinned)")
-        
+
         // 楽観的UI更新（即座にUIを更新）
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.2)) {
@@ -179,15 +178,12 @@ class SubjectListViewModel {
         do {
             // 正確なsortOrder計算でバッチ更新（1回の保存処理にまとめる）
             try await useCase.reorderSubjects(subjects)
-            print("Updated sortOrder for \(subjects.count) subjects via reorderSubjects")
 
             // 最終的にデータベースから再読み込み（整合性確保）
             await loadSubjects()
-            
-            print("Section move completed successfully")
-            
+
         } catch {
-            print("Failed section move: \(error)")
+            Logger.ui.error("Failed section move: \(error)")
             errorMessage = "並び順の保存に失敗しました: \(error.localizedDescription)"
             // エラー時は元に戻す
             await loadSubjects()
@@ -210,23 +206,6 @@ class SubjectListViewModel {
     
     func isSubjectPinned(_ subject: Subject) -> Bool {
         return subjects.first { $0.id == subject.id }?.isPinned ?? false
-    }
-    
-    // デバッグ用: 現在の順序を出力
-    func printCurrentOrder() {
-        print("Current subject order:")
-        let pinnedSubjects = getPinnedSubjects()
-        let regularSubjects = getRegularSubjects()
-        
-        print("Pinned (\(pinnedSubjects.count)):")
-        for (index, subject) in pinnedSubjects.enumerated() {
-            print("   \(index): \(subject.name) (sortOrder: \(subject.sortOrder))")
-        }
-        
-        print("Regular (\(regularSubjects.count)):")
-        for (index, subject) in regularSubjects.enumerated() {
-            print("   \(index): \(subject.name) (sortOrder: \(subject.sortOrder))")
-        }
     }
 }
 

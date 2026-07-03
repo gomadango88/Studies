@@ -19,13 +19,11 @@ class EfficientStopwatchManager: StopwatchProtocol {
     private var timerCancellable: AnyCancellable?
     private weak var activityManager: StudyActivityManager?    // Live Activity連携用
     private var currentSubject: Subject? // 教材への参照
-    private let instanceId = UUID().uuidString.prefix(8)    // デバッグ用のID
     
     // MARK: - Public Methods
     
     func start() {
         guard !isRunning else {
-            print("[\(instanceId)] Already running, ignoring start")
             return
         }
         
@@ -39,7 +37,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
             .map { _ in Date() }
             .sink { [weak self] currentDate in
                 guard let self = self else {
-                    print("self is nil in timer callback")
                     return
                 }
 
@@ -54,7 +51,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
     
     func stop() {
         guard isRunning else {
-            print("[\(instanceId)] Not running, ignoring stop")
             return
         }
         
@@ -108,7 +104,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
         // 同じ教材のアクティビティが表示中ならそのまま更新（一時停止→再開など）、
         // 未表示・別教材なら作り直す
         if !StudyActivityManager.shared.resumeActivity(for: subject, stopwatchManager: self) {
-            print("No reusable Live Activity, creating new one")
             StudyActivityManager.shared.startActivity(for: subject, stopwatchManager: self)
         }
     }
@@ -160,7 +155,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
     // エラーハンドリング版で状態保存
     private func saveCurrentState() {
         guard let subject = currentSubject else {
-            print("No subject set for saving state")
             return
         }
         
@@ -183,7 +177,6 @@ class EfficientStopwatchManager: StopwatchProtocol {
     // StudySessionManager保存のエラーハンドリング
     private func saveToStudySessionManager(subject: Subject) {
         StudySessionManager.shared.saveActiveSession(subject: subject, stopwatchManager: self)
-        print("StudySessionManager save successful")
     }
     
     // StudySession取得のエラーハンドリング
@@ -194,8 +187,7 @@ class EfficientStopwatchManager: StopwatchProtocol {
     // エラーハンドリング版で状態クリア
     private func clearSessionState() {
         StudySessionManager.shared.clearActiveSession()
-        print("StudySessionManager cleared")
-        
+
         // LiveActivityManager のクリア（常に実行）
         LiveActivitySessionManager.shared.clearLiveActivityState()
     }
@@ -281,10 +273,5 @@ class EfficientStopwatchManager: StopwatchProtocol {
         } else {
             return String(format: "%02d:%02d", minutes, seconds)
         }
-    }
-    
-    deinit {
-        print("[\(instanceId)] EfficientStopwatchManager deinit called")
-        print("[\(instanceId)] Timer should be already cancelled")
     }
 }

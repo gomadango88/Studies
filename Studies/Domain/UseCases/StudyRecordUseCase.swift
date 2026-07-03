@@ -103,66 +103,42 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.update(unarchivedRecord)
     }
 
-    // ← 修正: 月単位でのアーカイブ（デバッグログ付き）
+    // ← 修正: 月単位でのアーカイブ
     func archiveRecordsByMonth(_ monthYear: String) async throws {
-        print("UseCase: Starting archive process for month: \(monthYear)")
-        
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"
         monthFormatter.locale = Locale(identifier: "ja_JP")
 
         let allRecords = try await studyRecordRepository.fetchAll()
-        print("UseCase: Total records found: \(allRecords.count)")
-        
+
         let recordsToArchive = allRecords.filter { record in
             let recordMonth = monthFormatter.string(from: record.studyDate)
-            let shouldArchive = recordMonth == monthYear && !record.isArchived
-            if shouldArchive {
-                print("UseCase: Record to archive: \(record.id), month: \(recordMonth)")
-            }
-            return shouldArchive
+            return recordMonth == monthYear && !record.isArchived
         }
-        
-        print("UseCase: Records to archive: \(recordsToArchive.count)")
 
         for record in recordsToArchive {
             let archivedRecord = record.archived()
-            print("UseCase: Archiving record: \(record.id) -> isArchived: \(archivedRecord.isArchived)")
             try await studyRecordRepository.update(archivedRecord)
         }
-        
-        print("UseCase: Archive process completed for month: \(monthYear)")
     }
 
-    // ← 修正: 月単位でのアーカイブ解除（デバッグログ付き）
+    // ← 修正: 月単位でのアーカイブ解除
     func unarchiveRecordsByMonth(_ monthYear: String) async throws {
-        print("UseCase: Starting unarchive process for month: \(monthYear)")
-        
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"
         monthFormatter.locale = Locale(identifier: "ja_JP")
 
         let allRecords = try await studyRecordRepository.fetchAll()
-        print("UseCase: Total records found: \(allRecords.count)")
-        
+
         let recordsToUnarchive = allRecords.filter { record in
             let recordMonth = monthFormatter.string(from: record.studyDate)
-            let shouldUnarchive = recordMonth == monthYear && record.isArchived
-            if shouldUnarchive {
-                print("UseCase: Record to unarchive: \(record.id), month: \(recordMonth)")
-            }
-            return shouldUnarchive
+            return recordMonth == monthYear && record.isArchived
         }
-        
-        print("UseCase: Records to unarchive: \(recordsToUnarchive.count)")
 
         for record in recordsToUnarchive {
             let unarchivedRecord = record.unarchived()
-            print("UseCase: Unarchiving record: \(record.id) -> isArchived: \(unarchivedRecord.isArchived)")
             try await studyRecordRepository.update(unarchivedRecord)
         }
-        
-        print("UseCase: Unarchive process completed for month: \(monthYear)")
     }
 
     // MARK: - 統計メソッド（アクティブなレコードのみ対象）
