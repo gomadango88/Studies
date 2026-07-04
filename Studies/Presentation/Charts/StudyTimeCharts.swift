@@ -266,15 +266,17 @@ struct StudyTimeCharts: View {
             return !(todayStart >= visibleStart && todayStart < visibleEnd)
 
         case .thirtyDays:
-            // 表示中の月が今月かどうかチェック
+            // 表示中の月が今月かどうかチェック（吸着誤差を吸収した基準日を使う）
             let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let visibleMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let reference = errorToleratedScrollReference()
+            let visibleMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
             return currentMonthStart != visibleMonthStart
 
         case .twelveMonths:
-            // 今月が表示範囲に含まれているかチェック
+            // 今月が表示範囲に含まれているかチェック（吸着誤差を吸収した基準日を使う）
             let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let visibleStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let reference = errorToleratedScrollReference()
+            let visibleStart = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
             let visibleEnd = calendar.date(byAdding: .month, value: 12, to: visibleStart)!
             return !(currentMonthStart >= visibleStart && currentMonthStart < visibleEnd)
         }
@@ -286,19 +288,44 @@ struct StudyTimeCharts: View {
     }
     
     // 可視範囲を日・月境界に揃えて取得（終了は排他的）
+    // スクロール位置から表示範囲の基準日を求める。
+    // 吸着位置の座標変換（オフセット⇔日付）にはわずかな浮動小数誤差が乗り、
+    // 月初・週始まりのごく直前（例: 前月末の23:59:59）に静止することがある。
+    // 生の値から月初や日境界を取ると1ページ前として集計されてしまうため、
+    // 半日分ずらして日単位に丸めることで誤差を吸収する。
+    private func errorToleratedScrollReference() -> Date {
+        Calendar.current.startOfDay(for: scrollPos.addingTimeInterval(43_200))
+    }
+
     private func alignedVisibleRange() -> (start: Date, end: Date) {
         let calendar = Calendar.current
+        let reference = errorToleratedScrollReference()
         switch span {
         case .sevenDays:
-            let start = calendar.startOfDay(for: scrollPos)
+            // 週の開始日（システム設定の週始まりの曜日）に丸めてから7日間を求める。
+            // 月表示が(year, month)の単位でまとめて扱う（＝1ヶ月の途中でドラッグしても
+            // 平均・合計は変わらず、月境界を跨いだ時だけ切り替わる）のと同じ考え方で、
+            // 週表示も「その日から始まる7日間」ではなく「その日を含む暦週」を単位にする。
+            // これにより、1ページ内をドラッグ中に平均・合計が日単位で目まぐるしく
+            // 変わることがなくなり、週境界を跨いだ時だけ切り替わるようになる。
+            let start = calendar.dateInterval(of: .weekOfYear, for: reference)?.start
+                ?? calendar.startOfDay(for: reference)
             let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
             return (start, end)
+
+            // --- 変更前の実装（参考として保持）---
+            // ドラッグ中の位置から「その日を起点とする7日間」をそのまま使っていたため、
+            // 1ページ分ドラッグする間に平均・合計の集計対象が日単位で細かく動いてしまっていた。
+            // let start = reference
+            // let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
+            // return (start, end)
+
         case .thirtyDays:
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
             let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
             return (start, end)
         case .twelveMonths:
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
             let end = calendar.date(byAdding: .month, value: 12, to: start) ?? start
             return (start, end)
         }
@@ -517,6 +544,14 @@ struct StudyTimeCharts: View {
         .chartScrollPosition(x: $scrollPos)
         // Y軸はスクロール中固定し、静止後（scheduleYAxisRecalc経由）に表示ページへフィットさせる
         .chartYScale(domain: 0...yAxisUpperBound)
+        // Y軸上限を超えるバー（月表示の薄色の翌月分など）が上へ突き抜けず、
+        // プロット領域の上端で切れて見えるようにする。
+        // Rectangle()そのままでクリップすると、プロット領域内に描かれる横軸ラベル
+        // （スクロールに追従する曜日・日付ラベル）まで切れてしまうため、
+        // 上端だけで切り、下方向には余裕を持たせた専用形状を使う。
+        .chartPlotStyle { plotArea in
+            plotArea.clipShape(PlotTopEdgeClipShape())
+        }
         .chartXAxis {
             span.axisMarks
         }
@@ -559,10 +594,12 @@ struct StudyTimeCharts: View {
 
     // 月初ぴったりで静止した位置を、次のスワイプの吸着判定（進行方向）の基準として記録する。
     // 減速中の中間位置では更新せず、月初＝吸着完了位置とみなせる場合のみ書き込む。
+    // 月初のごく直前に静止する浮動小数誤差を考慮し、半日ずらした日単位の丸めで月を求める。
     private func updateMonthScrollAnchorIfNeeded(_ position: Date) {
         guard span == .thirtyDays else { return }
         let calendar = Calendar.current
-        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: position)) ?? position
+        let roundedDay = calendar.startOfDay(for: position.addingTimeInterval(43_200))
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: roundedDay)) ?? roundedDay
         if abs(position.timeIntervalSince(monthStart)) < 60 {
             monthScrollAnchor.value = monthStart
         }
@@ -1002,6 +1039,17 @@ private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
             }
             return current
         }
+    }
+}
+
+// プロット領域の「上端」だけでクリップするための形状。
+// 上端はプロット領域の境界ぴったりに保ち（Y軸上限を超えたバーの突き出しを防ぐ）、
+// 下方向へは余裕を持たせて、プロット領域内に描画される横軸ラベル
+// （曜日・日付）が切れないようにする。左右はスクロールビュー側でマスクされるため
+// 変更しない。
+private struct PlotTopEdgeClipShape: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        Path(CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: rect.height + 60))
     }
 }
 
