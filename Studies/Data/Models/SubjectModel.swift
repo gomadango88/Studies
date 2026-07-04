@@ -18,7 +18,7 @@ final class SubjectModel {
     var colorBlue: Double
     var colorAlpha: Double
     var sortOrder: Int
-    var isPinned: Bool = false  // ピン留めプロパティ
+    var isPinned: Bool = false
     var createdAt: Date
 
     init(
@@ -26,13 +26,12 @@ final class SubjectModel {
         name: String,
         color: Color,
         sortOrder: Int = 0,
-        isPinned: Bool = false,  // ピン留めパラメータ
+        isPinned: Bool = false,
         createdAt: Date = Date()
     ) {
         self.id = id
         self.name = name
-        
-        // ColorをRGBA成分に分解して保存
+
         let uiColor = UIColor(color)
         var red: CGFloat = 0
         var green: CGFloat = 0
@@ -45,11 +44,10 @@ final class SubjectModel {
         self.colorBlue = Double(blue)
         self.colorAlpha = Double(alpha)
         self.sortOrder = sortOrder
-        self.isPinned = isPinned  // ピン留め状態を設定
+        self.isPinned = isPinned
         self.createdAt = createdAt
     }
-    
-    // Colorプロパティ
+
     var color: Color {
         get {
             Color(
@@ -74,26 +72,24 @@ final class SubjectModel {
         }
     }
     
-    // isPinnedを含めたDomain層のSubjectエンティティに変換
     func toDomainEntity() -> Subject {
         Subject(
             id: id,
             name: name,
             color: color,
             sortOrder: sortOrder,
-            isPinned: isPinned,  // ピン留め状態を含める
+            isPinned: isPinned,
             createdAt: createdAt
         )
     }
-    
-    // isPinnedを含めたDomain層のSubjectエンティティから作成
+
     static func fromDomainEntity(_ subject: Subject) -> SubjectModel {
         SubjectModel(
             id: subject.id,
             name: subject.name,
             color: subject.color,
             sortOrder: subject.sortOrder,
-            isPinned: subject.isPinned,  // ピン留め状態を含める
+            isPinned: subject.isPinned,
             createdAt: subject.createdAt
         )
     }

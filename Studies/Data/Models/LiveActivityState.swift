@@ -11,7 +11,6 @@ import os
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Studies", category: "liveActivity")
 
-// Live Activity専用の軽量データ構造
 struct LiveActivityState: Codable {
     let subjectId: UUID
     let subjectName: String
@@ -30,13 +29,11 @@ struct LiveActivityState: Codable {
     }
 }
 
-// Live Activity用のマネージャー（軽量版）
 @MainActor
 @Observable
 class LiveActivitySessionManager {
     static let shared = LiveActivitySessionManager()
-    
-    // プロパティ名を変更してエラーを回避
+
     @ObservationIgnored @AppStorage("liveActivitySession")
     private var liveActivitySessionData: Data?
     

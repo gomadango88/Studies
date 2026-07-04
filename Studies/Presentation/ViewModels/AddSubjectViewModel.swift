@@ -38,10 +38,10 @@ class AddSubjectViewModel {
                 color: selectedColor,
                 isPinned: isPinned
             )
-            isSaving = false  // ← この行を追加
+            isSaving = false
             return true
         } catch {
-            isSaving = false  // ← この行を追加
+            isSaving = false
             if let useCaseError = error as? SubjectUseCaseError {
                 errorMessage = useCaseError.errorDescription
             } else {

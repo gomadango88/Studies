@@ -101,11 +101,9 @@ struct StudyGoalWidgetEntryView: View {
         }
     }
     
-    //Small Widget
     private var smallWidgetView: some View {
         VStack(spacing: 8) {
             if entry.hasValidGoal {
-                // 通常の表示
                 VStack(spacing: 6) {
                     Text("今日の学習")
                         .font(.system(size: 13, weight: .bold))
@@ -133,10 +131,9 @@ struct StudyGoalWidgetEntryView: View {
                     }
                 }
             } else {
-                //目標未設定時の表示
                 VStack(spacing: 12) {
                     Spacer()
-                    
+
                     Image(systemName: "target")
                         .font(.system(size: 24))
                         .foregroundColor(.orange)
@@ -162,11 +159,9 @@ struct StudyGoalWidgetEntryView: View {
         .padding(.vertical, 14)
     }
 
-    // Medium Widget
     private var mediumWidgetView: some View {
         VStack(spacing: 16) {
             if entry.hasValidGoal {
-                // 通常の表示
                 HStack {
                     VStack(alignment: .leading) {
                         Text("今日の学習")
@@ -206,10 +201,9 @@ struct StudyGoalWidgetEntryView: View {
                         .foregroundColor(.orange)
                 }
             } else {
-                //目標未設定時の表示
                 VStack(spacing: 16) {
                     Spacer()
-                    
+
                     Image(systemName: "target")
                         .font(.system(size: 40))
                         .foregroundColor(.orange)
@@ -267,13 +261,10 @@ struct StudyGoalProvider: TimelineProvider {
         }
     }
     
-    // 🔥 「今日の学習」合計データ取得メソッド（目標未設定対応版）
     private func fetchCurrentStudyGoalData() async -> StudyGoalEntry {
-        // WidgetDataManagerから合計データを取得
         if let widgetData = WidgetDataManager.shared.loadWidgetData() {
-            // 🔥 有効な目標があるかチェック
             let hasValidGoal = widgetData.dailyGoal > 0
-            
+
             return StudyGoalEntry(
                 date: Date(),
                 dailyGoal: widgetData.dailyGoal,
@@ -283,14 +274,13 @@ struct StudyGoalProvider: TimelineProvider {
                 hasValidGoal: hasValidGoal
             )
         } else {
-            // 🔥 データがない場合は「目標未設定」状態
             return StudyGoalEntry(
                 date: Date(),
-                dailyGoal: 0,  // 0で未設定を表現
+                dailyGoal: 0,
                 todayMinutes: 0,
                 streakDays: 0,
                 isAchieved: false,
-                hasValidGoal: false  // 目標未設定
+                hasValidGoal: false
             )
         }
     }
@@ -326,7 +316,6 @@ struct StudyGoalWidget: Widget {
         isAchieved: false,
         hasValidGoal: true
     )
-    // 🔥 目標未設定時のプレビュー追加
     StudyGoalEntry(
         date: Date(),
         dailyGoal: 0,
@@ -349,7 +338,6 @@ struct StudyGoalWidget: Widget {
         isAchieved: true,
         hasValidGoal: true
     )
-    // 🔥 目標未設定時のプレビュー追加
     StudyGoalEntry(
         date: Date(),
         dailyGoal: 0,

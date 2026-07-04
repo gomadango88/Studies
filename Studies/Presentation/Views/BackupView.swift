@@ -24,8 +24,7 @@ struct BackupView: View {
         NavigationStack {
             VStack {
                 Spacer(minLength: 150)
-                
-                // ヘッダー説明
+
                 VStack(spacing: 8) {
                     Image(systemName: "externaldrive.badge.plus")
                         .font(.system(size: 48))
@@ -41,8 +40,7 @@ struct BackupView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding()
-                
-                // データ準備とエクスポート
+
                 VStack(spacing: 16) {
                     switch backupStatus {
                     case .idle:
@@ -74,7 +72,6 @@ struct BackupView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                    // 達成記録・スケジュールの情報表示
                                     HStack {
                                         Label("\(data.dailyAchievements?.count ?? 0)件の達成記録", systemImage: "checkmark.seal")
                                         Spacer()
@@ -83,7 +80,6 @@ struct BackupView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                    // ← 追加: アーカイブ状態の情報表示
                                     HStack {
                                         let activeCount = data.studyRecords.filter { !$0.isArchived }.count
                                         let archivedCount = data.studyRecords.filter { $0.isArchived }.count
@@ -177,7 +173,6 @@ struct BackupView: View {
         backupStatus = .preparing
         
         do {
-            // SwiftDataからデータを取得（型を明示的に指定）
             let subjectDescriptor = FetchDescriptor<SubjectModel>()
             let recordDescriptor = FetchDescriptor<StudyRecordModel>()
             let achievementDescriptor = FetchDescriptor<DailyAchievementModel>()
@@ -188,7 +183,6 @@ struct BackupView: View {
             let achievements = try modelContext.fetch(achievementDescriptor)
             let schedules = try modelContext.fetch(scheduleDescriptor)
 
-            // バックアップ用データ構造に変換
             let subjectBackups = subjects.map { SubjectBackup(from: $0) }
             let recordBackups = studyRecords.map { StudyRecordBackup(from: $0) }  // ← アーカイブ状態も含まれる
             let achievementBackups = achievements.map { DailyAchievementBackup(from: $0) }

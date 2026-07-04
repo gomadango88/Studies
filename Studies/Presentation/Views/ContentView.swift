@@ -11,17 +11,14 @@ import os
 
 struct ContentView: View {
     @Environment(DIContainer.self) private var diContainer
-    
-    
-    // セッション復元用の状態
+
     @State private var shouldShowActiveSession = false
     @State private var activeSubject: Subject?
     @State private var showingSessionRestoreAlert = false
 
     // 永続ストア初期化失敗時の警告アラート用の状態（起動後1回だけ表示）
     @State private var showingPersistentStoreUnavailableAlert = false
-    
-    // タブ識別用の型安全な列挙
+
     enum AppTab: Hashable { case record, stats, goals, history }
     
     @State private var selectedTab: AppTab = .record
@@ -29,36 +26,25 @@ struct ContentView: View {
     var body: some View {
         
         TabView(selection: $selectedTab) {
-            // 学習記録のメイン画面
             Tab("記録", systemImage: "stopwatch", value: AppTab.record) {
                 StudyRecordMainView()
             }
-            
-            // 統計画面
+
             Tab("統計", systemImage: "chart.bar", value: AppTab.stats) {
                 StatisticsView()
             }
-            
-            
-            
-            // 目標画面
+
             Tab("目標", systemImage: "flag.fill", value: AppTab.goals) {
                 GoalSettingView()
             }
-            
-            // タイムライン画面
+
             Tab("履歴", systemImage: "clock.arrow.circlepath", value: AppTab.history) {
                 TimelineView()
             }
         }
         .onAppear {
-            
-            
-            
-            // アクティブセッションのチェック
             checkForActiveStudySession()
 
-            // アプリ起動時にウィジェットを更新
             Task { await WidgetUpdateService.update(using: diContainer) }
 
             // 永続ストアの初期化に失敗し、インメモリストアで動作している場合は
@@ -108,15 +94,13 @@ struct ContentView: View {
         } message: {
             Text("学習データの保存領域を初期化できなかったため、記録は端末を再起動するまで一時的にのみ保持されます。問題が続く場合は、空き容量を確認するかアプリを再インストールしてください。")
         }
-        // ウィジェットタップ時のURL処理
         .onOpenURL { url in
             handleDeepLink(url)
         }
     }
-    
-    // ディープリンク処理
+
     private func handleDeepLink(_ url: URL) {
-        
+
         guard url.scheme == "studies" else {
             Logger.ui.warning("Unknown URL scheme: \(url.scheme ?? "nil")")
             return
@@ -149,7 +133,6 @@ struct ContentView: View {
         Logger.ui.warning("Unknown deep link host: \(url.host ?? "nil")")
     }
     
-    // アクティブセッションチェックメソッド（既存）
     private func checkForActiveStudySession() {
         
         guard let activeSession = StudySessionManager.shared.getActiveSession() else {
@@ -179,7 +162,6 @@ struct ContentView: View {
     }
 }
 
-// 学習記録のメイン画面
 struct StudyRecordMainView: View {
     var body: some View {
         

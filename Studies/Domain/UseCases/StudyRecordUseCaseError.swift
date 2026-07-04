@@ -5,14 +5,6 @@
 //  Created by kasahara takuma on 2025/08/20.
 //
 
-
-//
-// StudyRecordUseCaseError.swift
-// Studies
-//
-// Created by takuma on 2025/08/08.
-//
-
 import Foundation
 
 public enum StudyRecordUseCaseError: LocalizedError {

@@ -51,7 +51,7 @@ class SubjectRepository: SubjectRepositoryProtocol {
             model.name = subject.name
             model.color = subject.color
             model.sortOrder = subject.sortOrder
-            model.isPinned = subject.isPinned  // エラーが解消される
+            model.isPinned = subject.isPinned
 
             try context.save()
         } else {
@@ -91,7 +91,7 @@ class SubjectRepository: SubjectRepositoryProtocol {
             let models = try context.fetch(descriptor)
             if let model = models.first {
                 model.sortOrder = subject.sortOrder
-                model.isPinned = subject.isPinned  // エラーが解消される
+                model.isPinned = subject.isPinned
             }
         }
         

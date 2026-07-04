@@ -7,9 +7,9 @@ final class DailyAchievementModel {
     var date: Date // startOfDay
     var subjectId: UUID? // nil = overall
     var requiredMinutes: Int // goal minutes required that day (0 if no goal)
-    var achievedMinutes: Int // actual minutes achieved that day
+    var achievedMinutes: Int
     var achieved: Bool // whether requiredMinutes was met
-    var computedAt: Date // when this was computed
+    var computedAt: Date
 
     init(date: Date, subjectId: UUID?, requiredMinutes: Int, achievedMinutes: Int, achieved: Bool, computedAt: Date = Date()) {
         let start = Calendar.current.startOfDay(for: date)

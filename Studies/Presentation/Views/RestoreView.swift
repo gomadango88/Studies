@@ -25,8 +25,7 @@ struct RestoreView: View {
         NavigationStack {
             VStack {
                 Spacer(minLength: 150)
-                
-                // ヘッダー説明
+
                 VStack(spacing: 8) {
                     Image(systemName: "externaldrive.badge.timemachine")
                         .font(.system(size: 48))
@@ -42,8 +41,7 @@ struct RestoreView: View {
                         .multilineTextAlignment(.center)
                 }
                 .padding()
-                
-                // インポートと復元
+
                 VStack(spacing: 16) {
                     switch restoreStatus {
                     case .idle:
@@ -89,7 +87,6 @@ struct RestoreView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
-                                    // ← 追加: アーカイブ状態の情報表示
                                     HStack {
                                         let activeCount = data.studyRecords.filter { !$0.isArchived }.count
                                         let archivedCount = data.studyRecords.filter { $0.isArchived }.count
@@ -222,7 +219,6 @@ struct RestoreView: View {
     private func loadBackupFile(from url: URL) async {
         await MainActor.run { restoreStatus = .analyzing }
         
-        // セキュリティスコープリソースへのアクセスを開始
         guard url.startAccessingSecurityScopedResource() else {
             await MainActor.run {
                 restoreStatus = .failed("ファイルへのアクセス権限を取得できませんでした")
@@ -230,8 +226,7 @@ struct RestoreView: View {
             Logger.data.error("セキュリティスコープアクセス失敗")
             return
         }
-        
-        // アクセス終了の処理を確実に実行
+
         defer {
             url.stopAccessingSecurityScopedResource()
         }
@@ -262,7 +257,6 @@ struct RestoreView: View {
         await MainActor.run { restoreStatus = .restoring }
         
         do {
-            // 既存データを全削除（達成記録・スケジュールも含む）
             // 旧フォーマットの復元でも全タイプを削除し、古い達成記録・スケジュールが残らないようにする
             try modelContext.delete(model: SubjectModel.self)
             try modelContext.delete(model: StudyRecordModel.self)
@@ -270,7 +264,6 @@ struct RestoreView: View {
             try modelContext.delete(model: StudyScheduleModel.self)
             try modelContext.delete(model: SubjectGoalModel.self)  // 孤児レコードも含めて確実に削除
 
-            // 教材データを復元
             for subjectBackup in backup.subjects {
                 let subject = SubjectModel(
                     id: subjectBackup.id,
@@ -287,8 +280,7 @@ struct RestoreView: View {
                 )
                 modelContext.insert(subject)
             }
-            
-            // 学習記録データを復元（アーカイブ状態を含む）
+
             for recordBackup in backup.studyRecords {
                 let record = StudyRecordModel(
                     id: recordBackup.id,
@@ -296,7 +288,7 @@ struct RestoreView: View {
                     studyDate: recordBackup.studyDate,
                     duration: recordBackup.duration,
                     createdAt: recordBackup.createdAt,
-                    isArchived: recordBackup.isArchived  // ← 追加: アーカイブ状態を復元
+                    isArchived: recordBackup.isArchived
                 )
                 modelContext.insert(record)
             }

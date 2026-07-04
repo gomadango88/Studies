@@ -14,7 +14,6 @@ struct StudyActivityAttributes: ActivityAttributes {
         var startDate: Date
         // 一時停止した時刻（実行中はnil）。Text(timerInterval:)を使わない静的表示に使う
         var pausedDate: Date?
-        // 実行状態
         var isRunning: Bool
 
         // 一時停止中の固定経過時間
@@ -44,10 +43,8 @@ struct StudyActivityAttributes: ActivityAttributes {
 
     // 教材ID（再開時に同じ教材のアクティビティか判定するために使う）
     var subjectId: UUID
-    // 教材名
     var subjectName: String
     // 教材の色（Hex形式）
     var subjectColor: String
-    // 開始時刻
     var startTime: Date
 }

@@ -13,6 +13,5 @@ struct StudiesLiveActivityBundle: WidgetBundle {
     var body: some Widget {
         StudyGoalWidget()
         StudiesLiveActivityLiveActivity()
-        //StudiesLiveActivityControl()
     }
 }

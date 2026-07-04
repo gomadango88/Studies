@@ -6,7 +6,6 @@
 import Foundation
 import SwiftUI
 
-// MARK: - マネージャ (プロトコル定義を削除)
 @MainActor
 final class StudyChartDataManager {
     private let useCase: StudyChartDataUseCase
@@ -34,19 +33,16 @@ final class StudyChartDataManager {
         let duration: TimeInterval
     }
 
-    // 既存のメソッド
     func fetchSummarizedRows(for span: Span, from startDate: Date, to endDate: Date) async throws -> [SummarizedRow] {
         let records = try await useCase.getRecordsForDateRange(from: startDate, to: endDate)
         return processSummarizedRows(records: records, span: span)
     }
 
-    // ← 追加: アクティブなレコードのみ取得
     func fetchActiveSummarizedRows(for span: Span, from startDate: Date, to endDate: Date) async throws -> [SummarizedRow] {
         let activeRecords = try await useCase.getActiveRecordsForDateRange(from: startDate, to: endDate)
         return processSummarizedRows(records: activeRecords, span: span)
     }
 
-    // ← 追加: 共通の集計処理
     private func processSummarizedRows(records: [StudyRecord], span: Span) -> [SummarizedRow] {
         let baseRows = records.map { rec in
             let rounded = (span == .twelveMonths)
@@ -76,7 +72,6 @@ final class StudyChartDataManager {
         }
     }
 
-    // 既存のメソッドも同様に修正
     func fetchSummarizedRows(for span: Span) async throws -> [SummarizedRow] {
         let now = Date()
         let startEnd: (Date, Date) = {
@@ -95,7 +90,6 @@ final class StudyChartDataManager {
             }
         }()
         
-        // ← 修正: アクティブなデータのみ取得
         return try await fetchActiveSummarizedRows(for: span, from: startEnd.0, to: startEnd.1)
     }
 }

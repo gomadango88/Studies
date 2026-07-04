@@ -46,14 +46,12 @@ class TimelineViewModel {
         errorMessage = nil
         
         do {
-            // 学習記録と教材データを並行して取得
             async let recordsResult = studyUseCase.getAllRecords()
             async let subjectsResult = subjectUseCase.getAllSubjects()
-            
+
             allRecords = try await recordsResult
             subjects = try await subjectsResult
-            
-            // 日付ごとにグループ化
+
             groupRecordsByDate()
             
         } catch {
@@ -64,7 +62,6 @@ class TimelineViewModel {
         isLoading = false
     }
     
-    // TimelineViewModel.swift に追加
     func deleteRecord(_ record: StudyRecord) async {
         guard let studyRecordUseCase = studyRecordUseCase else {
             return
@@ -73,16 +70,13 @@ class TimelineViewModel {
         do {
             try await studyRecordUseCase.deleteRecord(record)
 
-            // UIを更新するために記録を再読み込み
             await loadAllRecords()
 
         } catch {
             Logger.ui.error("Error deleting record: \(error)")
-            // エラーハンドリング（必要に応じてエラーメッセージを表示）
         }
     }
 
-    // 手動追加用の作成メソッド
     func addRecord(subjectId: UUID, studyDate: Date, duration: TimeInterval) async {
         guard let studyRecordUseCase = studyRecordUseCase else {
             return
@@ -93,7 +87,6 @@ class TimelineViewModel {
                 duration: duration,
                 studyDate: studyDate
             )
-            // UI更新のため再読み込み
             await loadAllRecords()
         } catch {
             Logger.ui.error("Error creating record: \(error)")
@@ -102,20 +95,18 @@ class TimelineViewModel {
     
     private func groupRecordsByDate() {
         let calendar = Calendar.current
-        
-        // 日付ごとにグループ化（新しい順）
+
         let grouped = Dictionary(grouping: allRecords) { record in
             calendar.startOfDay(for: record.studyDate)
         }
-        
-        // 各日付内で時刻順にソート（新しい順）
+
         groupedRecords = grouped.map { date, records in
             TimelineGroup(
                 date: date,
                 records: records.sorted { $0.studyDate > $1.studyDate }
             )
         }
-        .sorted { $0.date > $1.date } // 日付順（新しい順）
+        .sorted { $0.date > $1.date }
     }
 }
 

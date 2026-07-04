@@ -43,7 +43,6 @@ class ScheduleViewModel {
 
     private func saveSchedules() { /* SwiftData manages persistence */ }
 
-    // スケジュール保存時にウィジェット更新
     func saveSchedule(_ schedule: StudySchedule) {
         Task {
             do {
@@ -56,7 +55,6 @@ class ScheduleViewModel {
         }
     }
 
-    // スケジュール削除時にウィジェット更新
     func deleteSchedule(atOffsets offsets: IndexSet) {
         let ids = offsets.compactMap { schedules[$0].id }
         Task {
@@ -72,7 +70,6 @@ class ScheduleViewModel {
         }
     }
 
-    // スケジュール削除時にウィジェット更新
     func deleteSchedule(at index: Int) {
         guard index < schedules.count else { return }
         let id = schedules[index].id
@@ -87,7 +84,6 @@ class ScheduleViewModel {
         }
     }
 
-    // スケジュール削除時にウィジェット更新
     func deleteSchedule(withId id: UUID) {
         Task {
             do {
@@ -100,7 +96,6 @@ class ScheduleViewModel {
         }
     }
 
-    // スケジュール有効化/無効化時にウィジェット更新
     func toggleSchedule(withId id: UUID) {
         Task {
             do {
@@ -128,7 +123,6 @@ class ScheduleViewModel {
             .max { $0.priority < $1.priority }
     }
 
-    // スケジュール変更後のウィジェット更新
     private func updateWidgetAfterScheduleChange() async {
         await WidgetUpdateService.update(using: container)
     }
@@ -157,8 +151,6 @@ class ScheduleViewModel {
                 try await repository.upsert(s)
             }
             UserDefaults.standard.set(true, forKey: migratedKey)
-            // Optionally clear old data
-            // UserDefaults.standard.removeObject(forKey: "StudySchedules")
         } catch {
             Logger.data.error("旧スケジュールの移行失敗: \(error)")
             UserDefaults.standard.set(true, forKey: migratedKey)

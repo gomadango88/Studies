@@ -56,7 +56,6 @@ enum AchievementService {
         let calendar = Calendar.current
         let todayStart = calendar.startOfDay(for: Date())
 
-        // 対象の達成記録を一括取得して日付で参照できるようにする
         let descriptor = FetchDescriptor<DailyAchievementModel>(
             predicate: #Predicate { $0.subjectId == subjectId },
             sortBy: [SortDescriptor(\.date, order: .forward)]

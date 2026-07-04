@@ -49,7 +49,7 @@ struct StudyRecordUseCaseTests {
     }
 
     @Test func createRecord_unknownSubject_throwsSubjectNotFound() async throws {
-        let subjectRepo = MockSubjectRepository(subjects: []) // 教材が登録されていない
+        let subjectRepo = MockSubjectRepository(subjects: [])
         let recordRepo = MockStudyRecordRepository()
         let useCase = StudyRecordUseCase(studyRecordRepository: recordRepo, subjectRepository: subjectRepo)
 

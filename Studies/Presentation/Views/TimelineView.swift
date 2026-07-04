@@ -11,12 +11,10 @@ import WidgetKit
 struct TimelineView: View {
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: TimelineViewModel
-    
-    // 削除確認アラート用の状態管理
+
     @State private var recordToDelete: StudyRecord?
     @State private var showingDeleteAlert = false
-    
-    // 手動追加シート表示
+
     @State private var showingManualAddSheet = false
     
     init() {
@@ -54,16 +52,11 @@ struct TimelineView: View {
                     await viewModel.loadAllRecords()
                 }
             }
-            // 削除確認アラート
             .alert("記録を削除しますか？", isPresented: $showingDeleteAlert, presenting: recordToDelete) { record in
                 Button("削除", role: .destructive) {
                     Task {
                         await viewModel.deleteRecord(record)
-                        
-                        // 🔥 変更: ウィジェット更新は集中サービス経由
                         await updateWidgets()
-                        
-                        // 削除成功時の触覚フィードバック
                         HapticFeedback.success()
                     }
                 }
@@ -92,8 +85,7 @@ struct TimelineView: View {
     private func updateWidgets() async {
         await WidgetUpdateService.update(using: diContainer)
     }
-    
-    
+
     private var backdrop: some View {
         ZStack {
             LinearGradient(
@@ -218,22 +210,17 @@ struct OptimizedTimelineRecordCard: View {
     let record: StudyRecord
     let subject: Subject?
     let onDelete: () -> Void
-    
-    // パフォーマンス最適化用のキャッシュ
+
     @State private var cachedDurationText: String = ""
-    
+
     var body: some View {
         HStack(spacing: 12) {
-            // タイムライン線とドット
             timelineDot
-
-            // 記録カード
             recordCardContent
         }
         .padding(.leading, 12)
         .padding(.vertical, 6)
         .onAppear {
-            // 表示時に一度だけ時間フォーマットを計算してキャッシュ
             if cachedDurationText.isEmpty {
                 cachedDurationText = formatDuration(record.duration)
             }

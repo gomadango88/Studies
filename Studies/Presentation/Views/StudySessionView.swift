@@ -12,11 +12,9 @@ struct StudySessionView: View {
     @Environment(DIContainer.self) private var diContainer
     @State private var viewModel: StudySessionViewModel
 
-    // アラート表示用の状態管理
     @State private var showingCloseConfirmation = false
     @State private var hasPresentedAlert = false
 
-    // 新しい効率的ストップウォッチマネージャー
     @State private var efficientStopwatchManager = EfficientStopwatchManager()
     
     let subject: Subject
@@ -55,9 +53,8 @@ struct StudySessionView: View {
                 }
             }
         }
-        // スワイプでの閉じる動作を制御
         .presentationDetents([.large])
-        .presentationDragIndicator(.visible) // ドラッグインジケーターを表示
+        .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(shouldShowCloseConfirmation())
 
         // 下向きスワイプを検知して確認アラートを表示
@@ -81,7 +78,6 @@ struct StudySessionView: View {
             await viewModel.loadTodayRecords()
         }
 
-        // ストップウォッチ動作中に閉じようとした場合の確認アラート
         .alert("ストップウォッチが動作中です", isPresented: $showingCloseConfirmation) {
             Button("リセットして閉じる", role: .destructive) {
                 efficientStopwatchManager.reset()
@@ -103,7 +99,6 @@ struct StudySessionView: View {
             }
         }
 
-        // 保存失敗時のエラーアラート
         .alert("保存できませんでした", isPresented: errorAlertBinding) {
             Button("OK") { viewModel.errorMessage = nil }
         } message: {
@@ -139,7 +134,6 @@ struct StudySessionView: View {
         dismiss()
     }
     
-    // セッション復元処理
     private func checkAndRestoreActiveSession() {
         if let activeSession = StudySessionManager.shared.getActiveSession(),
            activeSession.subjectId == subject.id {
@@ -151,7 +145,6 @@ struct StudySessionView: View {
         efficientStopwatchManager.restoreStateIfNeeded(for: subject.id)
     }
     
-    // アクティブセッションからの復元処理
     private func restoreFromActiveSession(_ activeSession: StudySessionState) {
         if activeSession.isRunning {
             // アプリ終了中の経過時間を計算
@@ -169,7 +162,6 @@ struct StudySessionView: View {
                 efficientStopwatchManager.startWithLiveActivity(for: subject)
             }
         } else {
-            // 停止状態での復元
             efficientStopwatchManager.setAccumulatedTime(activeSession.accumulatedTime)
             efficientStopwatchManager.setElapsedTime(activeSession.elapsedTime)
             

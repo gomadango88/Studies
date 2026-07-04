@@ -12,12 +12,12 @@ import os
 // MARK: - データモデル
 struct MonthlySummary: Identifiable, Equatable {
     let id = UUID()
-    let monthYear: String // "2024-03"
-    let displayMonthYear: String // "2024年3月"
+    let monthYear: String
+    let displayMonthYear: String
     let totalDuration: TimeInterval
     let recordCount: Int
-    let subjectBreakdown: [String: TimeInterval] // 科目別時間
-    let isArchived: Bool // ← 追加: この月がアーカイブ状態かどうか
+    let subjectBreakdown: [String: TimeInterval]
+    let isArchived: Bool
     
     var totalHours: Int {
         Int(totalDuration / 3600)
@@ -50,7 +50,7 @@ class StudyRecordListViewModel: ObservableObject {
     @Published var activeMonthlySummaries: [MonthlySummary] = []
     @Published var archivedMonthlySummaries: [MonthlySummary] = []
     @Published var isLoading = false
-    @Published var showingArchived = false // ← 追加: アーカイブ表示モード
+    @Published var showingArchived = false
     
     private var studyRecordUseCase: StudyRecordUseCaseProtocol
     private var subjectUseCase: SubjectUseCaseProtocol
@@ -75,7 +75,6 @@ class StudyRecordListViewModel: ObservableObject {
         self.subjectUseCase = subjectUseCase
     }
     
-    // ← 追加: 依存関係の更新メソッド
     func updateDependencies(studyRecordUseCase: StudyRecordUseCaseProtocol, subjectUseCase: SubjectUseCaseProtocol) {
         self.studyRecordUseCase = studyRecordUseCase
         self.subjectUseCase = subjectUseCase
@@ -84,14 +83,11 @@ class StudyRecordListViewModel: ObservableObject {
     func loadData() async {
         isLoading = true
         do {
-            // アクティブとアーカイブの両方を読み込み
             let activeRecords = try await studyRecordUseCase.getActiveRecords()
             let archivedRecords = try await studyRecordUseCase.getArchivedRecords()
             let subjects = try await subjectUseCase.getAllSubjects()
 
-            // アクティブデータの月別サマリー作成
             activeMonthlySummaries = createMonthlySummaries(from: activeRecords, subjects: subjects, isArchived: false)
-            // アーカイブデータの月別サマリー作成
             archivedMonthlySummaries = createMonthlySummaries(from: archivedRecords, subjects: subjects, isArchived: true)
         } catch {
             Logger.data.error("データ読み込みエラー: \(error)")
@@ -202,7 +198,6 @@ struct StudyRecordListView: View {
         }
     }
     
-    // ← 修正: Environment DIContainerを使用
     init() {
         // 一時的にsharedを使用し、onAppearで正しいDIContainerで再初期化
         self._viewModel = StateObject(wrappedValue: StudyRecordListViewModel(
@@ -214,7 +209,6 @@ struct StudyRecordListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // 説明文
                 VStack(spacing: 8) {
                     Text("学習記録の蓄積によりグラフの動作が重い場合は、ここで過去のデータを管理できます。アーカイブされた記録はグラフから除外しますが、データは保持されます。")
                         .font(.subheadline)
@@ -228,7 +222,6 @@ struct StudyRecordListView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 12)
                 
-                // タブ切り替え
                 Picker("表示モード", selection: $viewModel.showingArchived) {
                     Text("アクティブ").tag(false)
                     Text("アーカイブ").tag(true)
@@ -237,7 +230,6 @@ struct StudyRecordListView: View {
                 .padding(.horizontal)
                 .padding(.bottom)
                 
-                // メインコンテンツ
                 Group {
                     if viewModel.isLoading {
                         ProgressView("読み込み中...")
@@ -256,7 +248,6 @@ struct StudyRecordListView: View {
                 }
             }
             .onAppear {
-                // ← 修正: 正しいDIContainerでViewModelを再設定
                 setupViewModel()
             }
             .task {
@@ -284,9 +275,7 @@ struct StudyRecordListView: View {
         }
     }
     
-    // ← 追加: ViewModelのセットアップ
     private func setupViewModel() {
-        // Environment DIContainerが利用可能になった時点で再設定
         viewModel.updateDependencies(
             studyRecordUseCase: di.studyRecordUseCase,
             subjectUseCase: di.subjectUseCase
@@ -347,7 +336,6 @@ struct MonthlySummaryRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // 月表示
             VStack {
                 Text(monthNumber)
                     .font(.title2)
@@ -395,8 +383,7 @@ struct MonthlySummaryRow: View {
                     }
                 }
             }
-            
-            // アクションボタン
+
             Menu {
                 if isArchived {
                     Button {

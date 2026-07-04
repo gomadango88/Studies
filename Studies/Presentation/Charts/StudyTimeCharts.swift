@@ -15,9 +15,6 @@ struct StudyTimeCharts: View {
     @State private var rows: [ChartRow] = []
     @State private var scrollPos: Date
     @State private var isLoading = false
-    @State private var isScrollingToToday = false
-    @State private var scrollProgress: Double = 0
-    @State private var buttonPressed = false
     @State private var selectedDate: Date? = nil
     @State private var lastHapticBucketDate: Date? = nil
 
@@ -252,37 +249,8 @@ struct StudyTimeCharts: View {
         return totalMinutes
     }
     
-    // 「今日」ボタンの表示判定
-    private var shouldShowTodayButton: Bool {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        switch span {
-        case .sevenDays:
-            // 今日が表示範囲に含まれているかチェック
-            let todayStart = calendar.startOfDay(for: now)
-            let visibleStart = scrollPos
-            let visibleEnd = scrollPos.addingTimeInterval(span.visibleLength)
-            return !(todayStart >= visibleStart && todayStart < visibleEnd)
-
-        case .thirtyDays:
-            // 表示中の月が今月かどうかチェック（吸着誤差を吸収した基準日を使う）
-            let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let reference = errorToleratedScrollReference()
-            let visibleMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
-            return currentMonthStart != visibleMonthStart
-
-        case .twelveMonths:
-            // 今月が表示範囲に含まれているかチェック（吸着誤差を吸収した基準日を使う）
-            let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let reference = errorToleratedScrollReference()
-            let visibleStart = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
-            let visibleEnd = calendar.date(byAdding: .month, value: 12, to: visibleStart)!
-            return !(currentMonthStart >= visibleStart && currentMonthStart < visibleEnd)
-        }
-    }
-    
-    // 「今日」の適切なスクロール位置を計算（今日/今月が右端に来る位置）
+    // 「今日」を含むページの適切なスクロール位置を計算する（今日/今月が右端に来る位置）。
+    // タブを開く・開き直すたびに body 末尾の onAppear から呼ばれ、常に最近のページへ戻す。
     private func getTodayScrollPosition() -> Date {
         Self.todayScrollPosition(for: span)
     }
@@ -312,13 +280,6 @@ struct StudyTimeCharts: View {
                 ?? calendar.startOfDay(for: reference)
             let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
             return (start, end)
-
-            // --- 変更前の実装（参考として保持）---
-            // ドラッグ中の位置から「その日を起点とする7日間」をそのまま使っていたため、
-            // 1ページ分ドラッグする間に平均・合計の集計対象が日単位で細かく動いてしまっていた。
-            // let start = reference
-            // let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
-            // return (start, end)
 
         case .thirtyDays:
             let start = calendar.date(from: calendar.dateComponents([.year, .month], from: reference))!
@@ -376,7 +337,6 @@ struct StudyTimeCharts: View {
     var body: some View {
         VStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
-                // スパン切替
                 Picker("表示期間", selection: $span) {
                     Text("週").tag(ChartSpan.sevenDays)
                     Text("月").tag(ChartSpan.thirtyDays)
@@ -386,11 +346,8 @@ struct StudyTimeCharts: View {
                 .padding(.horizontal)
                 .accessibilityLabel("表示期間")
                 
-                // 平均と合計を横並びで表示
                 VStack(alignment: .leading, spacing: 8) {
-                    // 平均時間と合計時間を横並びで表示
                     HStack(spacing: 24) {
-                        // 平均時間表示
                         VStack(alignment: .leading, spacing: 4) {
                             Text(span == .twelveMonths ? "月平均" : "平均")
                                 .font(.callout)
@@ -398,8 +355,7 @@ struct StudyTimeCharts: View {
                                 .foregroundStyle(.secondary)
                             formatDurationWithStyle(averageStudyTimeInVisibleRange)
                         }
-                        
-                        // 合計時間表示
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text("合計")
                                 .font(.callout)
@@ -408,8 +364,9 @@ struct StudyTimeCharts: View {
                             formatDurationWithStyle(totalStudyTimeInVisibleRange)
                         }
                     }
-                    
-                    // 日付表示のHStackを基準にした固定レイアウト
+
+                    // 「今日」ボタンは廃止し、代わりにタブを開く（開き直す）たびに
+                    // 必ず最近のページへ自動的に戻すようにしている（body末尾のonAppearを参照）。
                     HStack {
                         Text(dateRangeString)
                             .font(.callout)
@@ -419,54 +376,10 @@ struct StudyTimeCharts: View {
                             .truncationMode(.middle)
                         Spacer()
                     }
-                    .overlay(
-                        // ボタンを完全にオーバーレイとして配置（HStackのサイズに影響しない）
-                        HStack {
-                            Spacer()
-                            Button(action: {
-                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                                    scrollPos = getTodayScrollPosition()
-                                }
-                                HapticFeedback.light()
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "calendar.circle.fill")
-                                        .font(.system(size: 14))
-                                    Text("今日")
-                                        .font(.system(size: 13, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color.blue, Color.blue.opacity(0.8)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .shadow(color: .blue.opacity(0.25), radius: 4, x: 0, y: 2)
-                                )
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                                )
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .opacity(shouldShowTodayButton ? 1.0 : 0.0)
-                            .scaleEffect(shouldShowTodayButton ? 1.0 : 0.8)
-                            .allowsHitTesting(shouldShowTodayButton)
-                            .animation(.spring(response: 0.5, dampingFraction: 0.7), value: shouldShowTodayButton)
-                            .accessibilityLabel("今日に移動")
-                        }
-                    )
                 }
                 .padding(.horizontal)
             }
-            
-            // チャート表示部分
+
             Group {
                 if isLoading && rows.isEmpty {
                     // ローディング中（初回ロード時のみ。スパン切替時は直前のデータを表示し続ける）
@@ -480,7 +393,6 @@ struct StudyTimeCharts: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .frame(height: 240)
                 } else if rows.isEmpty {
-                    // データがない場合
                     VStack(spacing: 16) {
                         Image(systemName: "chart.bar")
                             .font(.system(size: 48))
@@ -496,7 +408,6 @@ struct StudyTimeCharts: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .frame(height: 240)
                 } else {
-                    // データがある場合
                     createChart()
                         .frame(height: 240)
                         .padding(.horizontal)
@@ -504,6 +415,17 @@ struct StudyTimeCharts: View {
             }
         }
         .task(id: span) { await loadData() }
+        .onAppear {
+            // 統計タブを開く・開き直すたびに、常に「週」表示・最近のページ（今日を含む
+            // ページ）へ戻す。「今日」ボタンを廃止した代わりに、離れていた表示状態から
+            // 復帰する手段をここに一本化している。
+            // lastLoadedSpanも一致させておくことで、.task(id: span)経由のloadData内にある
+            // 「スパン切替時に直前の表示位置を変換して引き継ぐ」ロジックが働かないようにし、
+            // 意図せず中途半端な位置に変換されるのを防ぐ。アニメーションはさせず即座に切り替える。
+            span = .sevenDays
+            lastLoadedSpan = .sevenDays
+            scrollPos = getTodayScrollPosition()
+        }
     }
 
     // バーの不透明度を決める。
@@ -624,7 +546,6 @@ struct StudyTimeCharts: View {
             let manager = StudyChartDataManager(useCase: di.studyRecordUseCase)
             let subjects = try await di.subjectUseCase.getAllSubjects()
 
-            // アクティブなデータのみ取得
             let (startDate, endDate) = span.fullDataRange()
             let baseRows = try await manager.fetchActiveSummarizedRows(
                 for: StudyChartDataManager.Span(span),
@@ -781,8 +702,6 @@ struct StudyTimeCharts: View {
                 let sortedRows = bucketRows.sorted { $0.durationMinutes > $1.durationMinutes }
 
                 ZStack(alignment: .topLeading) {
-
-                    // Tooltip
                     VStack(alignment: .leading, spacing: 6) {
                         Text(tooltipTitle(for: bucketDate))
                             .font(.caption)
@@ -824,12 +743,7 @@ struct StudyTimeCharts: View {
                     }
                     .padding(8)
                     .frame(width: tooltipWidth)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
-                    )
-                    .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 8))
                     .position(x: tooltipLeftX + tooltipWidth / 2, y: tooltipTopY)
                 }
             } else {
@@ -840,7 +754,6 @@ struct StudyTimeCharts: View {
         }
     }
     
-    // Helper Functions
     private func formatMinutesToHourMinute(_ minutes: Double) -> String {
         let totalMinutes = Int(minutes)
         let hours = totalMinutes / 60
@@ -1089,19 +1002,16 @@ enum ChartSpan: CaseIterable {
         }
     }
     
-    // 全データ読み込み範囲
     func fullDataRange() -> (Date, Date) {
         let calendar = Calendar.current
         let now = Date()
-        
+
         switch self {
         case .sevenDays, .thirtyDays:
-            // 5年前から現在まで
             let start = calendar.date(byAdding: .year, value: -5, to: calendar.startOfDay(for: now))!
             return (start, now)
-            
+
         case .twelveMonths:
-            // 5年前から現在まで（月境界）
             let start = calendar.date(byAdding: .year, value: -5, to: calendar.startOfDay(for: now))!
             let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
             let end = calendar.date(byAdding: .month, value: 1, to: monthStart)!

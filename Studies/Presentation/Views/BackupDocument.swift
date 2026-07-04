@@ -5,12 +5,6 @@
 //  Created by kasahara takuma on 2025/08/22.
 //
 
-
-//
-//  BackupDocument.swift
-//  Studies
-//
-
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers

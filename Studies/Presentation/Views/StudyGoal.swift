@@ -32,7 +32,7 @@ struct StudyProgress {
 // MARK: - Custom Progress Bar with Automatic Subtle Gradient
 
 struct CustomProgressBar: View {
-    let progress: CGFloat // 0.0〜1.0
+    let progress: CGFloat
     let color: Color
     let height: CGFloat
     let cornerRadius: CGFloat
@@ -41,11 +41,9 @@ struct CustomProgressBar: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                // 背景バー
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(Color(.systemGray5))
 
-                // 進捗バー（グラデーション対応）
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(progressBarFill)
                     .frame(width: geometry.size.width * max(0, min(1, progress)))
@@ -58,15 +56,14 @@ struct CustomProgressBar: View {
         .accessibilityValue("\(Int(max(0, min(1, progress)) * 100))%")
     }
     
-    // 微細なグラデーション自動生成
     private var progressBarFill: some ShapeStyle {
         if useGradient {
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
-                        color.opacity(0.65), // 左端: 少し透明
-                        color,               // 中央: 元の色
-                        color.opacity(0.95)  // 右端: わずかに暗く
+                        color.opacity(0.65),
+                        color,
+                        color.opacity(0.95)
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -434,8 +431,7 @@ struct DailySummaryCard: View {
                     .foregroundColor(progress.todayMinutes >= goal.dailyGoalMinutes ? .green : .orange)
                     .accessibilityHidden(true)
             }
-            
-            // カスタムプログレスバー
+
             CustomProgressBar(
                 progress: progressValue,
                 color: goal.subjectColor,
@@ -511,8 +507,7 @@ struct DailyGoalCard: View {
                         .fontWeight(.medium)
                         .foregroundColor(.secondary)
                 }
-                
-                // カスタムプログレスバー
+
                 CustomProgressBar(
                     progress: progressPercentage,
                     color: goal.subjectColor,
@@ -559,13 +554,11 @@ struct DailyGoalCard: View {
 // MARK: - Preview
 
 #if DEBUG && !WIDGET_EXTENSION
-// メインアプリでのみ使用
 #Preview {
     GoalSettingView()
         .environment(DIContainer.shared)
 }
 #else
-// Widget Extension用のシンプルなプレビュー
 #Preview {
     DailySummaryCard(
         goal: StudyGoal(

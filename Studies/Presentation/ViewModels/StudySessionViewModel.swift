@@ -24,36 +24,29 @@ class StudySessionViewModel {
     // スケジュール読み込み用のViewModelを使い回す（保存のたびに複数回newしない）
     private var scheduleViewModel: ScheduleViewModel?
 
-    // subjectは外部から変更不可
     private(set) var subject: Subject
-    
-    // 手動入力
+
     var inputHours = 0
     var inputMinutes = 0
 
-    // 学習記録
     var todayRecords: [StudyRecord] = []
     var isSaving = false
     // 保存・削除処理のエラー（アラート表示用）
     var errorMessage: String?
     // 今日の記録読み込みのエラー（保存エラーの表示とは独立して管理）
     var loadErrorMessage: String?
-    
-    // 初期化状態を追跡
+
     var isInitialized = false
     var isLoading = false
-    
+
     init(subject: Subject) {
         self.subject = subject
     }
-    
-    // setContainerでsubject情報の同期を確実にする
+
     func setContainer(_ container: DIContainer, for subject: Subject) {
-        // 前の状態をクリア
         self.diContainer = nil
         self.scheduleViewModel = nil
 
-        // 新しい教材情報を設定
         self.subject = subject
         self.diContainer = container
         self.isInitialized = true

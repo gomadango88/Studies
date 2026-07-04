@@ -10,8 +10,7 @@ import ActivityKit
 import SwiftUI
 import os
 
-// Live Activity拡張ターゲットにも共有されるファイルのため、
-// アプリターゲット専用のLogger extension(AppLogger.swift)ではなくファイルプライベートなLoggerを使う
+
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Studies", category: "liveActivity")
 
 @MainActor
@@ -30,30 +29,24 @@ class StudyActivityManager {
     
     // MARK: - Activity Management
     
-    ///アプリ起動時全ライブアクティビティクリア
     func clearAllActivitiesOnAppLaunch() async {
-        // 現在のアクティビティを終了
         if let currentActivity = currentActivity {
             await currentActivity.end(nil, dismissalPolicy: .immediate)
             self.currentActivity = nil
         }
 
-        // すべてのアクティブなアクティビティを取得して終了
         let activities = Activity<StudyActivityAttributes>.activities
         for activity in activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
     }
 
-    /// Live Activityを開始
     func startActivity(for subject: Subject, stopwatchManager: StopwatchProtocol) {
         startTask?.cancel()
         startTask = Task {
-            //既存のアクティビティをすべてクリア
             await clearAllActivitiesOnAppLaunch()
             // クリア中に保存・リセットと競合した場合は新規作成しない（取り残し防止）
             guard !Task.isCancelled else { return }
-            // 新しいActivityを作成
             await createNewActivity(for: subject, stopwatchManager: stopwatchManager)
         }
     }
@@ -70,7 +63,6 @@ class StudyActivityManager {
         return true
     }
     
-    /// 新しいActivity作成
     private func createNewActivity(for subject: Subject, stopwatchManager: StopwatchProtocol) async {
         self.stopwatchManager = stopwatchManager
         guard let stopwatch = self.stopwatchManager else {
@@ -125,7 +117,6 @@ class StudyActivityManager {
     }
 
 
-    /// Live Activityを終了
     func endActivity() async {
         // 開始処理が実行中なら中断を要求し、完了を待ってから終了する。
         // これを待たないと、終了後に開始処理が新しいアクティビティを作って取り残される
@@ -153,8 +144,7 @@ class StudyActivityManager {
     }
 
     // MARK: - Reset Handling
-    
-    /// リセット時の処理
+
     func handleReset() {
         Task {
             await endActivity()

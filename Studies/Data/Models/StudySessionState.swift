@@ -36,7 +36,6 @@ struct StudySessionState: Codable {
 class StudySessionManager {
     static let shared = StudySessionManager()
     
-    // @ObservationIgnoredを追加してエラーを解決
     @ObservationIgnored @AppStorage("activeStudySession")
     private var activeStudySessionData: Data?
     

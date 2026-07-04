@@ -17,7 +17,6 @@ struct EfficientStopwatchView: View {
                 .font(.headline)
                 .foregroundColor(.secondary)
             
-            // 修正：停止中は静的表示、動作中のみSystemFormatStyleを使用
             VStack(spacing: 8) {
                 Text(stopwatchManager.formattedTime)
                     .font(.system(size: 48, weight: .thin, design: .rounded))
@@ -31,9 +30,7 @@ struct EfficientStopwatchView: View {
             }
             .padding(.vertical, 20)
 
-            // Apple純正風ボタン
             HStack(spacing: 40) {
-                // リセットボタン（左側）
                 Button(action: {
                     stopwatchManager.reset()
                 }) {
@@ -52,7 +49,6 @@ struct EfficientStopwatchView: View {
 
                 Spacer()
 
-                // 開始/停止ボタン（右側）
                 Button(action: {
                     if stopwatchManager.isRunning {
                         stopwatchManager.stop()
@@ -98,7 +94,6 @@ struct EfficientStopwatchView: View {
     }
 }
 
-// 統合View（EfficientStopwatchViewをそのまま使用）
 struct AdaptiveStopwatchView: View {
     @Bindable var stopwatchManager: EfficientStopwatchManager
     let subject: Subject

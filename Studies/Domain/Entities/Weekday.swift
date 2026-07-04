@@ -10,7 +10,6 @@ import Foundation
 // MARK: - Helper Functions
 
 extension Calendar {
-    /// システム設定に準拠した曜日配列を取得
     static func localizedWeekdays() -> [Weekday] {
         let calendar = Calendar.current
         let firstWeekdayIndex = calendar.firstWeekday - 1 // Calendar は1ベース、Weekday enumは0ベース

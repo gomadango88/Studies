@@ -67,7 +67,6 @@ final class ScheduleRepository: ScheduleRepositoryProtocol {
         model.colorAlpha = schedule.color.alpha
         model.priority = schedule.priority
 
-        // Replace subject goals
         // 注意: removeAll()だけではリレーションが切れるだけで古いSubjectGoalModelが
         // ストアに孤児として残るため、明示的に削除してから置き換える
         for oldGoal in model.subjectGoals {

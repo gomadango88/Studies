@@ -22,7 +22,6 @@ struct TwoComponentTimePicker: UIViewRepresentable {
         let picker = UIPickerView()
         picker.dataSource = context.coordinator
         picker.delegate = context.coordinator
-        // Initial selection
         let hourRow = hoursRange.firstIndex(of: normalizedHours(hours)) ?? 0
         let minuteRow = minutesRange.firstIndex(of: normalizedMinutes(minutes)) ?? 0
         picker.selectRow(hourRow, inComponent: 0, animated: false)

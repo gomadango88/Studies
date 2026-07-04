@@ -100,7 +100,6 @@ struct SubjectListView: View {
         }
     }
     
-    // 確実な初期化処理
     private func initializeViewModel() async {
         
         await MainActor.run {
@@ -260,12 +259,6 @@ struct SubjectListView: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                         .lineLimit(2)
-
-                    //if subject.isPinned {
-                        //Image(systemName: "pin.fill")
-                            //.font(.caption)
-                            //.foregroundColor(.orange)
-                    //}
                 }
 
                 Text("作成日: \(subject.createdAt.japaneseDateString)")
@@ -325,9 +318,8 @@ struct SubjectListView: View {
         .accessibilityLabel("教材を追加")
     }
     
-    // MARK: - Computed Properties（既存のsectionの上に追加）
+    // MARK: - Computed Properties
 
-    // 🔥 追加: 検索機能
     private var filteredPinnedSubjects: [Subject] {
         guard let viewModel = viewModel else { return [] }
         let pinnedList = viewModel.subjects.filter { $0.isPinned }.sorted { $0.sortOrder < $1.sortOrder }
@@ -354,20 +346,17 @@ struct SubjectListView: View {
         }
     }
 
-    // 既存のpinnedSubjects、regularSubjectsメソッドは削除または更新
     private func pinnedSubjects(viewModel: SubjectListViewModel) -> [Subject] {
-        return filteredPinnedSubjects // ← 変更
+        return filteredPinnedSubjects
     }
 
     private func regularSubjects(viewModel: SubjectListViewModel) -> [Subject] {
-        return filteredRegularSubjects // ← 変更
+        return filteredRegularSubjects
     }
 
-    
     // MARK: - Methods
-    
+
     private func handleSubjectTap(_ subject: Subject) {
-        // 🔥 修正: より確実な状態更新
         DispatchQueue.main.async {
             selectedSubject = subject
         }

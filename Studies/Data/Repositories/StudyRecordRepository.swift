@@ -76,7 +76,6 @@ class StudyRecordRepository: StudyRecordRepositoryProtocol {
         try context.save()
     }
     
-    // ← 修正: isArchivedプロパティの更新を追加
     func update(_ record: StudyRecord) async throws {
         let context = modelContainer.mainContext
         let recordId = record.id // 明示的に変数に格納
@@ -90,7 +89,7 @@ class StudyRecordRepository: StudyRecordRepositoryProtocol {
             model.subjectId = record.subjectId
             model.studyDate = record.studyDate
             model.duration = record.duration
-            model.isArchived = record.isArchived  // ← 追加: これが抜けていました！
+            model.isArchived = record.isArchived
 
             try context.save()
         } else {

@@ -23,13 +23,11 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.fetchAll()
     }
 
-    // ← 追加: アクティブなレコードのみ取得
     func getActiveRecords() async throws -> [StudyRecord] {
         let allRecords = try await studyRecordRepository.fetchAll()
         return allRecords.filter { !$0.isArchived }
     }
 
-    // ← 追加: アーカイブされたレコードのみ取得
     func getArchivedRecords() async throws -> [StudyRecord] {
         let allRecords = try await studyRecordRepository.fetchAll()
         return allRecords.filter { $0.isArchived }
@@ -43,7 +41,6 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.fetchRecords(for: date)
     }
 
-    // ← 追加: アクティブなレコードのみ日付で取得
     func getActiveRecordsForDate(_ date: Date) async throws -> [StudyRecord] {
         let records = try await studyRecordRepository.fetchRecords(for: date)
         return records.filter { !$0.isArchived }
@@ -53,7 +50,6 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.fetchRecords(from: startDate, to: endDate)
     }
 
-    // ← 追加: アクティブなレコードのみ日付範囲で取得
     func getActiveRecordsForDateRange(from startDate: Date, to endDate: Date) async throws -> [StudyRecord] {
         let records = try await studyRecordRepository.fetchRecords(from: startDate, to: endDate)
         return records.filter { !$0.isArchived }
@@ -91,19 +87,16 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         try await studyRecordRepository.delete(record)
     }
 
-    // ← 追加: 個別レコードのアーカイブ
     func archiveRecord(_ record: StudyRecord) async throws {
         let archivedRecord = record.archived()
         try await studyRecordRepository.update(archivedRecord)
     }
 
-    // ← 追加: 個別レコードのアーカイブ解除
     func unarchiveRecord(_ record: StudyRecord) async throws {
         let unarchivedRecord = record.unarchived()
         try await studyRecordRepository.update(unarchivedRecord)
     }
 
-    // ← 修正: 月単位でのアーカイブ
     func archiveRecordsByMonth(_ monthYear: String) async throws {
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"
@@ -122,7 +115,6 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
         }
     }
 
-    // ← 修正: 月単位でのアーカイブ解除
     func unarchiveRecordsByMonth(_ monthYear: String) async throws {
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"

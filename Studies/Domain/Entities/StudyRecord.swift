@@ -31,7 +31,6 @@ struct StudyRecord: Identifiable, Equatable {
         self.isArchived = isArchived
     }
     
-    //アーカイブ状態を変更するメソッド
     func archived() -> StudyRecord {
         return StudyRecord(
             id: self.id,
@@ -57,7 +56,6 @@ struct StudyRecord: Identifiable, Equatable {
 
 // MARK: - Extensions
 extension StudyRecord {
-    /// 時間を時:分:秒の形式で取得
     var formattedDuration: String {
         let hours = Int(duration) / 3600
         let minutes = Int(duration) % 3600 / 60
@@ -70,7 +68,6 @@ extension StudyRecord {
         }
     }
     
-    /// 学習日付を日本語形式で取得
     var formattedStudyDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -82,7 +79,7 @@ extension StudyRecord {
         StudyRecord(
             subjectId: UUID(),
             studyDate: Date(),
-            duration: 3600 // 1時間
+            duration: 3600
         )
     }
 }
