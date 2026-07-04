@@ -36,12 +36,17 @@ struct StudyTimeCharts: View {
     // Y軸再計算のデバウンス用タスク（スクロール中は毎フレーム走らせず、静止を待って1回だけ実行する）
     @State private var yAxisRecalcTask: Task<Void, Never>?
 
+    // 月表示で直前に静止していた月初位置（スワイプの進行方向判定の基準）。
+    // 参照型なので、値が更新されても chartScrollTargetBehavior のモディファイア値は
+    // 変化せず、減速アニメーション中の再ターゲティングによるガクつきを起こさない。
+    @State private var monthScrollAnchor = ChartScrollAnchor(StudyTimeCharts.todayScrollPosition(for: .thirtyDays))
+
     init() {
         _scrollPos = State(initialValue: Self.todayScrollPosition(for: .sevenDays))
     }
 
     // 「今日」を含むページの先頭位置を計算（インスタンス生成前や初期値計算にも使えるようstatic化）
-    // 週表示は今週の先頭、月・年表示は今日／今月が右端に来る位置を返す
+    // 週表示は今週の先頭、月表示は今月の月初、年表示は今月が右端に来る位置を返す
     private static func todayScrollPosition(for span: ChartSpan) -> Date {
         let calendar = Calendar.current
         let now = Date()
@@ -52,8 +57,9 @@ struct StudyTimeCharts: View {
             // （dateInterval(of: .weekOfYear) はシステム設定の週始まりの曜日 Calendar.firstWeekday に従う）
             return calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? calendar.startOfDay(for: now)
         case .thirtyDays:
-            let idealPos = calendar.date(byAdding: .day, value: -29, to: now) ?? now
-            return calendar.startOfDay(for: idealPos)
+            // 暦の1ヶ月＝1ページ。今日を含む「今月」の月初を表示する
+            return calendar.date(from: calendar.dateComponents([.year, .month], from: now))
+                ?? calendar.startOfDay(for: now)
         case .twelveMonths:
             let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
             return calendar.date(byAdding: .month, value: -11, to: currentMonthStart) ?? currentMonthStart
@@ -61,7 +67,10 @@ struct StudyTimeCharts: View {
     }
 
     // 年表示は月ごとに日数が異なる（うるう年など）ため、スクロール位置（月初）を基準に
-    // 実際の12ヶ月分の長さを都度計算する。週・月表示は固定長のまま。
+    // 実際の12ヶ月分の長さを都度計算する。
+    // 週・月表示は固定長（7日／31日）。特に月表示は、可視域を月の長さに合わせて動的に
+    // 変えるとスクロール中のジオメトリ再構築で吸着位置やY軸が不安定になったため、
+    // 31日固定とし、短い月ではみ出した翌月分は薄色表示で「集計対象外」を示す方式にしている。
     private var currentVisibleLength: TimeInterval {
         switch span {
         case .sevenDays, .thirtyDays:
@@ -91,9 +100,8 @@ struct StudyTimeCharts: View {
             let lower = calendar.date(byAdding: .day, value: -7 * pages, to: pageStart) ?? earliest
             return (lower, pageStart)
         case .thirtyDays:
-            let days = max(calendar.dateComponents([.day], from: earliest, to: pageStart).day ?? 0, 0)
-            let pages = (days + 29) / 30
-            let lower = calendar.date(byAdding: .day, value: -30 * pages, to: pageStart) ?? earliest
+            // ページ＝暦の1ヶ月なので、最初の記録を含む月の月初がそのまま下限になる
+            let lower = calendar.date(from: calendar.dateComponents([.year, .month], from: earliest)) ?? earliest
             return (lower, pageStart)
         case .twelveMonths:
             let months = max(calendar.dateComponents([.month], from: earliest, to: pageStart).month ?? 0, 0)
@@ -116,10 +124,8 @@ struct StudyTimeCharts: View {
             aligned = calendar.dateInterval(of: .weekOfYear, for: candidate)?.start
                 ?? calendar.startOfDay(for: candidate)
         case .thirtyDays:
-            let day = calendar.startOfDay(for: candidate)
-            let offsetDays = calendar.dateComponents([.day], from: bounds.upper, to: day).day ?? 0
-            let pageIndex = Int(floor(Double(offsetDays) / 30.0))
-            aligned = calendar.date(byAdding: .day, value: pageIndex * 30, to: bounds.upper) ?? day
+            // 候補日を含む月の月初に揃える
+            aligned = calendar.date(from: calendar.dateComponents([.year, .month], from: candidate)) ?? candidate
         case .twelveMonths:
             let month = calendar.date(from: calendar.dateComponents([.year, .month], from: candidate)) ?? candidate
             let offsetMonths = calendar.dateComponents([.month], from: bounds.upper, to: month).month ?? 0
@@ -145,7 +151,9 @@ struct StudyTimeCharts: View {
             let upper = calendar.date(byAdding: .day, value: 7, to: bounds.upper) ?? bounds.upper
             return bounds.lower...upper
         case .thirtyDays:
-            let upper = calendar.date(byAdding: .day, value: 30, to: bounds.upper) ?? bounds.upper
+            // 可視域が31日固定のため、最終ページ（今月）の左端が月初に揃うよう
+            // 上限は「今月の月初＋31日」とする
+            let upper = calendar.date(byAdding: .day, value: 31, to: bounds.upper) ?? bounds.upper
             return bounds.lower...upper
         case .twelveMonths:
             let upper = calendar.date(byAdding: .month, value: 12, to: bounds.upper) ?? bounds.upper
@@ -153,24 +161,18 @@ struct StudyTimeCharts: View {
         }
     }
 
-    var scrollPositionEnd: Date {
-        let calendar = Calendar.current
-        switch span {
-        case .sevenDays, .thirtyDays:
-            return scrollPos.addingTimeInterval(span.visibleLength)
-        case .twelveMonths:
-            // 月表示では月初から12ヶ月後の月末まで
-            let scrollMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
-            let endMonth = calendar.date(byAdding: .month, value: 12, to: scrollMonthStart)!
-            return calendar.date(byAdding: .second, value: -1, to: endMonth) ?? endMonth
-        }
-    }
-    
+
     var dateRangeString: String {
         let calendar = Calendar.current
         let (rangeStart, rangeEnd) = alignedVisibleRange()
         switch span {
-        case .sevenDays, .thirtyDays:
+        case .thirtyDays:
+            // 暦の1ヶ月をそのまま表示しているため「2026年7月」のようにシンプルに表示する
+            let year = calendar.component(.year, from: rangeStart)
+            let month = calendar.component(.month, from: rangeStart)
+            return "\(year)年\(month)月"
+
+        case .sevenDays:
             let endDisplay = calendar.date(byAdding: .day, value: -1, to: rangeEnd) ?? rangeEnd
             let startYear = calendar.component(.year, from: rangeStart)
             let startMonth = calendar.component(.month, from: rangeStart)
@@ -262,14 +264,13 @@ struct StudyTimeCharts: View {
             let visibleStart = scrollPos
             let visibleEnd = scrollPos.addingTimeInterval(span.visibleLength)
             return !(todayStart >= visibleStart && todayStart < visibleEnd)
-            
+
         case .thirtyDays:
-            // 今日が表示範囲に含まれているかチェック
-            let todayStart = calendar.startOfDay(for: now)
-            let visibleStart = scrollPos
-            let visibleEnd = scrollPos.addingTimeInterval(span.visibleLength)
-            return !(todayStart >= visibleStart && todayStart < visibleEnd)
-            
+            // 表示中の月が今月かどうかチェック
+            let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+            let visibleMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            return currentMonthStart != visibleMonthStart
+
         case .twelveMonths:
             // 今月が表示範囲に含まれているかチェック
             let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
@@ -293,8 +294,8 @@ struct StudyTimeCharts: View {
             let end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
             return (start, end)
         case .thirtyDays:
-            let start = calendar.startOfDay(for: scrollPos)
-            let end = calendar.date(byAdding: .day, value: 30, to: start) ?? start
+            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
+            let end = calendar.date(byAdding: .month, value: 1, to: start) ?? start
             return (start, end)
         case .twelveMonths:
             let start = calendar.date(from: calendar.dateComponents([.year, .month], from: scrollPos))!
@@ -478,22 +479,40 @@ struct StudyTimeCharts: View {
         .task(id: span) { await loadData() }
     }
 
+    // バーの不透明度を決める。
+    // - バー選択中: 選択バケット以外を減光（既存挙動）
+    // - 月表示: 31日固定幅の右端に入り込んだ「表示中の月に属さない日」（翌月分）は
+    //   平均・合計・Y軸の集計に含まれないため、薄色にして対象外であることを示す
+    private func barOpacity(for row: ChartRow, selectedBucketDate: Date?, monthRange: (start: Date, end: Date)?) -> Double {
+        if let selectedBucketDate, row.bucketDate != selectedBucketDate {
+            return 0.25
+        }
+        if let monthRange, !(monthRange.start <= row.bucketDate && row.bucketDate < monthRange.end) {
+            return 0.35
+        }
+        return 1.0
+    }
+
     @ViewBuilder
     private func createChart() -> some View {
         let selectedBucketDate = selectedDate.map { normalizedBucketDate(for: $0) }
+        // 月表示のみ「表示中の月」の範囲を渡し、範囲外のバーを薄色表示する
+        let visibleMonthRange: (start: Date, end: Date)? = (span == .thirtyDays) ? alignedVisibleRange() : nil
         Chart(sortedRowsForChart) { row in
             BarMark(
                 x: .value("Period", row.bucketDate, unit: span.xUnit),
                 y: .value("Minutes", row.durationMinutes)
             )
             .foregroundStyle(row.subjectColor)
-            .opacity(selectedBucketDate == nil || row.bucketDate == selectedBucketDate! ? 1.0 : 0.25)
+            .opacity(barOpacity(for: row, selectedBucketDate: selectedBucketDate, monthRange: visibleMonthRange))
         }
         .chartScrollableAxes(.horizontal)
         // 記録の前後（今日を含む現在のページまで）も含む明示的なドメインを指定し、
         // データが存在しない期間へも確実にスクロールできるようにする
         .chartXScale(domain: chartXDomain)
-        .chartScrollTargetBehavior(HealthStylePagingBehavior(span: span))
+        .chartScrollTargetBehavior(
+            HealthStylePagingBehavior(span: span, domain: chartXDomain, monthAnchor: monthScrollAnchor)
+        )
         .chartXVisibleDomain(length: currentVisibleLength)
         .chartScrollPosition(x: $scrollPos)
         // Y軸はスクロール中固定し、静止後（scheduleYAxisRecalc経由）に表示ページへフィットさせる
@@ -530,11 +549,23 @@ struct StudyTimeCharts: View {
                 lastHapticBucketDate = nil
             }
         }
-        .onChange(of: scrollPos) { _, _ in
+        .onChange(of: scrollPos) { _, newValue in
             scheduleYAxisRecalc()
+            updateMonthScrollAnchorIfNeeded(newValue)
         }
         .accessibilityLabel("学習時間グラフ")
         .accessibilityValue("\(dateRangeString)、合計\(formatMinutesToHourMinute(totalStudyTimeInVisibleRange))")
+    }
+
+    // 月初ぴったりで静止した位置を、次のスワイプの吸着判定（進行方向）の基準として記録する。
+    // 減速中の中間位置では更新せず、月初＝吸着完了位置とみなせる場合のみ書き込む。
+    private func updateMonthScrollAnchorIfNeeded(_ position: Date) {
+        guard span == .thirtyDays else { return }
+        let calendar = Calendar.current
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: position)) ?? position
+        if abs(position.timeIntervalSince(monthStart)) < 60 {
+            monthScrollAnchor.value = monthStart
+        }
     }
     
     // MARK: - データ読み込み（全データ一括読み込み）
@@ -588,6 +619,10 @@ struct StudyTimeCharts: View {
                     // データの読み込みでスクロール可能範囲（最初の記録の位置）が確定・変化した後も、
                     // 現在位置がページ境界と可動範囲の中に収まるよう矯正する
                     scrollPos = clampedPageAlignedScrollPosition(scrollPos, for: span)
+                }
+                // 月表示のスワイプ吸着判定の基準位置も現在の静止位置に同期する
+                if span == .thirtyDays {
+                    monthScrollAnchor.value = scrollPos
                 }
                 // データ読み込み直後は「静止後」の一種として即座にY軸を合わせる（待たずに反映）。
                 // 初回表示時はアニメーションさせず、切替・再読み込み時のみ滑らかに遷移させる。
@@ -644,11 +679,12 @@ struct StudyTimeCharts: View {
         // 直前に見ていた範囲の中心付近の日付を基準にする
         let oldVisibleLength: TimeInterval
         switch oldSpan {
-        case .sevenDays, .thirtyDays:
+        case .sevenDays:
             oldVisibleLength = oldSpan.visibleLength
-        case .twelveMonths:
+        case .thirtyDays, .twelveMonths:
+            let months = (oldSpan == .twelveMonths) ? 12 : 1
             let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: position)) ?? position
-            let monthEnd = calendar.date(byAdding: .month, value: 12, to: monthStart) ?? monthStart
+            let monthEnd = calendar.date(byAdding: .month, value: months, to: monthStart) ?? monthStart
             oldVisibleLength = monthEnd.timeIntervalSince(monthStart)
         }
         let anchorDate = position.addingTimeInterval(oldVisibleLength / 2)
@@ -824,22 +860,60 @@ struct StudyTimeCharts: View {
 }
 
 // MARK: - スクロール吸着挙動（ヘルスケア準拠のページング）
+
+// スクロールが月初で静止した位置を保持する参照ボックス。
+// chartScrollTargetBehavior のモディファイア値が毎フレーム変化すると
+// 減速アニメーション中の再ターゲティングでガクつくため、参照型に包んで
+// behavior の値自体は安定に保ったまま最新の静止位置を共有する。
+// メインアクター（View）が書き込み、nonisolated な updateTarget が読むためロックで保護する。
+private final class ChartScrollAnchor: @unchecked Sendable {
+    private nonisolated let lock = NSLock()
+    private nonisolated(unsafe) var storage: Date
+
+    nonisolated init(_ value: Date) {
+        storage = value
+    }
+
+    nonisolated var value: Date {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return storage
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            storage = newValue
+        }
+    }
+}
+
 // スパンごとに最適な吸着挙動へ委譲する。単一の型にまとめることで、
 // スパン切替時にチャートのビュー階層（スクロール状態）を作り直さずに済む。
 private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
     let span: ChartSpan
+    // 月表示の月初吸着でスクロールオフセット⇔日付の変換に使う（データ変化時以外は不変）
+    let domain: ClosedRange<Date>
+    // 月表示で直前に静止していた月初（スワイプの進行方向判定の基準）
+    let monthAnchor: ChartScrollAnchor
 
     nonisolated func updateTarget(_ target: inout ScrollTarget, context: ChartScrollTargetBehaviorContext) {
         switch span {
-        case .sevenDays, .thirtyDays:
-            // 週・月表示: 標準のページング挙動（フリック速度に応じて複数ページ動くこともある）。
+        case .sevenDays:
+            // 週表示: 標準のページング挙動（フリック速度に応じて複数ページ動くこともある）。
             //
             // ジェスチャー開始位置を基準に「1ページを超える移動量だけ弱める」後処理を試みたが、
             // システムが計算したスクロールの減速アニメーションと、後から書き換えた目標位置が
             // 噛み合わずアニメーションがガクつく結果になったため撤回し、標準の挙動に戻している。
-            // スナップ先の感度調整とアニメーションの滑らかさを両立させるには、実機での
-            // 試行錯誤を伴う調整が必要と判断した。
             PagingScrollTargetBehavior().updateTarget(&target, context: context)
+        case .thirtyDays:
+            // 月表示: ページ幅（31日固定）と月の長さ（28〜31日）が一致しないため、
+            // 標準のページングや値吸着（ValueAligned）では左端が月初からずれた位置
+            // （例: 右端が月初に揃う位置）に止まることがある。
+            // そこで減速の自然な停止位置を日付へ変換し、「月の一定割合以上進んでいたら
+            // 隣の月初へ、それ未満なら元の月初へ」というUIScrollViewのページング相当の
+            // 判定で吸着先を計算する。どう転んでも必ずいずれかの月初に丸められる。
+            updateTargetSnappingToMonthStart(&target, context: context)
         case .twelveMonths:
             // 年表示: 月ごとに日数が異なるため固定長ページングでは月境界からずれてしまう。
             // 月初への吸着＋ページ単位のメジャー吸着を組み合わせ、
@@ -854,6 +928,80 @@ private struct HealthStylePagingBehavior: ChartScrollTargetBehavior {
         // 最初の記録より前・今日のページより先へは吸着させず、端でのスワイプは跳ね戻る。
         let maxOriginX = max(context.contentSize.width - context.containerSize.width, 0)
         target.rect.origin.x = min(max(target.rect.origin.x, 0), maxOriginX)
+    }
+
+    // 月表示用: 吸着先を必ず月初に揃える
+    nonisolated private func updateTargetSnappingToMonthStart(
+        _ target: inout ScrollTarget,
+        context: ChartScrollTargetBehaviorContext
+    ) {
+        let contentWidth = Double(context.contentSize.width)
+        let containerWidth = Double(context.containerSize.width)
+        let domainSeconds = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        // 月表示の固定可視域（31日）。ChartSpan.visibleLength はMainActor分離のため
+        // nonisolatedなこの文脈では参照できず、同じ値をリテラルで持つ。
+        let visibleSeconds: TimeInterval = 86_400.0 * 31
+
+        // 「コンテンツ全体の幅＝ドメイン全体」「コンテナ幅＝可視域31日分」という
+        // 縮尺の前提が成り立っているか自己検証する（プロット領域のインセット等で
+        // ずれている場合に誤った位置へ吸着させないため）。
+        // 成り立たない場合は月初への値吸着にフォールバックする（左端ずれの可能性は
+        // 残るが、動作は安全）。
+        let secondsPerPoint = domainSeconds / max(contentWidth, 1)
+        let expectedContainerWidth = visibleSeconds / secondsPerPoint
+        let scaleLooksConsistent = contentWidth > 0 && containerWidth > 0 && domainSeconds > 0
+            && abs(expectedContainerWidth - containerWidth) <= containerWidth * 0.05
+
+        guard scaleLooksConsistent else {
+            ValueAlignedChartScrollTargetBehavior(
+                matching: DateComponents(day: 1),
+                limitBehavior: .always
+            ).updateTarget(&target, context: context)
+            return
+        }
+
+        // 減速の自然な停止位置（速度反映済み）を日付に変換し、月初へ丸める
+        let naturalDate = domain.lowerBound.addingTimeInterval(Double(target.rect.origin.x) * secondsPerPoint)
+        let snapped = Self.snappedMonthStart(from: monthAnchor.value, naturalDate: naturalDate)
+        target.rect.origin.x = CGFloat(snapped.timeIntervalSince(domain.lowerBound) / secondsPerPoint)
+    }
+
+    // ジェスチャーの自然な停止位置(naturalDate)を、直前に静止していた月初(start)からの
+    // 進行方向を考慮して月初へ丸める。進行方向の月の一定割合（threshold）以上進んで
+    // いれば隣の月初へ、それ未満なら手前の月初へ戻す（UIScrollViewのページング判定相当）。
+    // どの経路でも必ず「いずれかの月初」を返すため、中途半端な位置には止まらない。
+    nonisolated private static func snappedMonthStart(from start: Date, naturalDate: Date) -> Date {
+        let calendar = Calendar.current
+        // 月のこの割合を超えて進んだら隣の月へめくる（小さいほど軽いスワイプでめくれる）
+        let threshold = 0.3
+        // 基準位置を月初に正規化（許容誤差付きで記録された値の保険）
+        let startMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: start)) ?? start
+
+        if naturalDate >= startMonth {
+            var current = startMonth
+            for _ in 0..<600 {
+                guard let next = calendar.date(byAdding: .month, value: 1, to: current) else { return current }
+                if naturalDate < next {
+                    let length = next.timeIntervalSince(current)
+                    let progress = length > 0 ? naturalDate.timeIntervalSince(current) / length : 0
+                    return progress >= threshold ? next : current
+                }
+                current = next
+            }
+            return current
+        } else {
+            var current = startMonth
+            for _ in 0..<600 {
+                guard let prev = calendar.date(byAdding: .month, value: -1, to: current) else { return current }
+                if naturalDate >= prev {
+                    let length = current.timeIntervalSince(prev)
+                    let progress = length > 0 ? current.timeIntervalSince(naturalDate) / length : 0
+                    return progress >= threshold ? prev : current
+                }
+                current = prev
+            }
+            return current
+        }
     }
 }
 
@@ -881,7 +1029,10 @@ enum ChartSpan: CaseIterable {
         let day = 86_400.0
         switch self {
         case .sevenDays: return day * 7
-        case .thirtyDays: return day * 30
+        case .thirtyDays:
+            // 月表示は「月初を左端に31日分」の固定幅。31日に満たない月では翌月の
+            // 先頭数日が右端に入り込むが、それらは集計対象外として薄色で表示する
+            return day * 31
         case .twelveMonths:
             // 年表示の実際の可視域は月初からの12ヶ月分（うるう年等で日数が変動する）を
             // 動的に計算する（StudyTimeCharts.currentVisibleLength を参照）。
