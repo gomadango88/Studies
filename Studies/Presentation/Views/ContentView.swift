@@ -90,6 +90,11 @@ struct ContentView: View {
                 activeSubject = nil
                 showingSessionRestoreAlert = false
             }
+
+            // .cancelロールのボタンを明示しないと英語の"Cancel"が自動追加される
+            Button("キャンセル", role: .cancel) {
+                showingSessionRestoreAlert = false
+            }
         } message: {
             if let subject = activeSubject {
                 Text("「\(subject.name)」の学習を継続しますか？\nストップウォッチのカウントは保存されています。")
