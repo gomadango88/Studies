@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import TipKit
 import os
 
 // MARK: - Data Models
@@ -238,20 +239,26 @@ struct GoalSettingView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if let viewModel = viewModel {
-                    if viewModel.hasActiveSchedule {
-                        if !viewModel.goals.isEmpty {
-                            dailyGoalsView(viewModel: viewModel)
+            VStack(spacing: 0) {
+                TipView(SetGoalTip())
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                Group {
+                    if let viewModel = viewModel {
+                        if viewModel.hasActiveSchedule {
+                            if !viewModel.goals.isEmpty {
+                                dailyGoalsView(viewModel: viewModel)
+                            } else {
+                                noSubjectGoalsView
+                            }
                         } else {
-                            noSubjectGoalsView
+                            noScheduleView
                         }
                     } else {
-                        noScheduleView
+                        ProgressView("データ読み込み中...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                } else {
-                    ProgressView("データ読み込み中...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -260,6 +267,7 @@ struct GoalSettingView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("編集") {
+                        SetGoalTip().invalidate(reason: .actionPerformed)
                         showingScheduleEditor = true
                     }
                     .accessibilityLabel("目標を編集")

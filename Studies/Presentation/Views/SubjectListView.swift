@@ -3,6 +3,7 @@
 //
 
 import SwiftUI
+import TipKit
 
 struct SubjectListView: View {
     @Environment(DIContainer.self) private var diContainer
@@ -28,10 +29,15 @@ struct SubjectListView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let viewModel = viewModel {
-                    if viewModel.subjects.isEmpty {
-                        emptyStateView
-                    } else {
-                        stableSubjectList(viewModel: viewModel)
+                    Group {
+                        if viewModel.subjects.isEmpty {
+                            emptyStateView
+                        } else {
+                            stableSubjectList(viewModel: viewModel)
+                        }
+                    }
+                    .onChange(of: viewModel.subjects.isEmpty, initial: true) { _, isEmpty in
+                        StudiesTipsState.hasSubjects = !isEmpty
                     }
                 } else {
                     VStack {
@@ -142,9 +148,12 @@ struct SubjectListView: View {
     
     private func stableSubjectList(viewModel: SubjectListViewModel) -> some View {
         List {
-            
+            TipView(StartStudyTip())
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+
             if searchText.isEmpty {
-                
+
                 Section(header: pinnedSectionHeader) {
                     if filteredPinnedSubjects.isEmpty {
                         HStack {
@@ -310,11 +319,13 @@ struct SubjectListView: View {
 
     private var addButton: some View {
         Button {
+            AddSubjectTip().invalidate(reason: .actionPerformed)
             showingAddSubject = true
         } label: {
             Image(systemName: "plus")
                 .font(.headline)
         }
+        .popoverTip(AddSubjectTip())
         .accessibilityLabel("教材を追加")
     }
     
@@ -357,6 +368,7 @@ struct SubjectListView: View {
     // MARK: - Methods
 
     private func handleSubjectTap(_ subject: Subject) {
+        StartStudyTip().invalidate(reason: .actionPerformed)
         DispatchQueue.main.async {
             selectedSubject = subject
         }
