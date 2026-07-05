@@ -80,7 +80,7 @@ struct ContentView: View {
                 showingSessionRestoreAlert = false
             }
             
-            Button("セッションを破棄", role: .destructive) {
+            Button("セッションを破棄", role: .cancel) {
 
                 StudySessionManager.shared.clearActiveSession()
                 LiveActivitySessionManager.shared.clearLiveActivityState()
@@ -88,11 +88,6 @@ struct ContentView: View {
                     await StudyActivityManager.shared.clearAllActivitiesOnAppLaunch()
                 }
                 activeSubject = nil
-                showingSessionRestoreAlert = false
-            }
-
-            // .cancelロールのボタンを明示しないと英語の"Cancel"が自動追加される
-            Button("キャンセル", role: .cancel) {
                 showingSessionRestoreAlert = false
             }
         } message: {
