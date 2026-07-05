@@ -19,6 +19,8 @@ struct ContentView: View {
     // 永続ストア初期化失敗時の警告アラート用の状態（起動後1回だけ表示）
     @State private var showingPersistentStoreUnavailableAlert = false
 
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     enum AppTab: Hashable { case record, stats, goals, history }
     
     @State private var selectedTab: AppTab = .record
@@ -43,15 +45,21 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            checkForActiveStudySession()
-
             Task { await WidgetUpdateService.update(using: diContainer) }
 
-            // 永続ストアの初期化に失敗し、インメモリストアで動作している場合は
-            // 起動後1回だけユーザーに注意喚起する
-            if diContainer.isPersistentStoreUnavailable {
-                showingPersistentStoreUnavailableAlert = true
+            // オンボーディング未完了時はシートとの競合を避けるため、完了後にまとめて実行する
+            if hasCompletedOnboarding {
+                StudiesTipsState.hasCompletedOnboarding = true
+                runPostLaunchChecks()
             }
+        }
+        .sheet(isPresented: Binding(get: { !hasCompletedOnboarding }, set: { _ in })) {
+            OnboardingView {
+                hasCompletedOnboarding = true
+                StudiesTipsState.hasCompletedOnboarding = true
+                runPostLaunchChecks()
+            }
+            .interactiveDismissDisabled()
         }
         .sheet(isPresented: $shouldShowActiveSession) {
             if let subject = activeSubject {
@@ -72,7 +80,7 @@ struct ContentView: View {
                 showingSessionRestoreAlert = false
             }
             
-            Button("セッションを破棄", role: .cancel) {
+            Button("セッションを破棄", role: .destructive) {
 
                 StudySessionManager.shared.clearActiveSession()
                 LiveActivitySessionManager.shared.clearLiveActivityState()
@@ -133,6 +141,16 @@ struct ContentView: View {
         Logger.ui.warning("Unknown deep link host: \(url.host ?? "nil")")
     }
     
+    private func runPostLaunchChecks() {
+        checkForActiveStudySession()
+
+        // 永続ストアの初期化に失敗し、インメモリストアで動作している場合は
+        // 起動後1回だけユーザーに注意喚起する
+        if diContainer.isPersistentStoreUnavailable {
+            showingPersistentStoreUnavailableAlert = true
+        }
+    }
+
     private func checkForActiveStudySession() {
         
         guard let activeSession = StudySessionManager.shared.getActiveSession() else {
