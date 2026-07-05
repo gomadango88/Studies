@@ -12,7 +12,7 @@ import SwiftUI
 struct StudiesLiveActivityLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: StudyActivityAttributes.self) { context in
-            LockScreenLiveActivityView(context: context)
+            LiveActivityContentView(context: context)
         } dynamicIsland: { context in
             let subjectColor = Color(hex: context.attributes.subjectColor) ?? .accentColor
 
@@ -58,8 +58,29 @@ struct StudiesLiveActivityLiveActivity: Widget {
             }
             .keylineTint(subjectColor)
         }
+        // Apple Watchのスマートスタックにも専用レイアウト(.small)を提供する。
+        // これを指定しないとwatchOSが既定の黒いレイアウトを自動生成する
+        .supplementalActivityFamilies([.small])
         .configurationDisplayName("学習記録")
         .description("学習時間を追跡します。")
+    }
+}
+
+// MARK: - Content View (family branching)
+
+/// 表示先に応じてレイアウトを切り替える。
+/// .small = Apple Watchスマートスタック、それ以外 = iPhoneロック画面/StandBy。
+struct LiveActivityContentView: View {
+    @Environment(\.activityFamily) private var activityFamily
+    let context: ActivityViewContext<StudyActivityAttributes>
+
+    var body: some View {
+        switch activityFamily {
+        case .small:
+            WatchLiveActivityView(context: context)
+        default:
+            LockScreenLiveActivityView(context: context)
+        }
     }
 }
 
@@ -202,6 +223,56 @@ struct LockScreenLiveActivityView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+        }
+        .background(
+            LinearGradient(
+                colors: [subjectColor, subjectColor.darkened(0.35)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+}
+
+// MARK: - Watch View (Smart Stack)
+
+/// Apple Watchスマートスタック用。iPhoneロック画面カードと同じ
+/// 教材カラーのグラデーション＋透かしシンボル＋白文字を、狭い枠に合わせて縮小した版。
+struct WatchLiveActivityView: View {
+    let context: ActivityViewContext<StudyActivityAttributes>
+
+    private var subjectColor: Color {
+        Color(hex: context.attributes.subjectColor) ?? .accentColor
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Image(systemName: "book.fill")
+                .font(.system(size: 54, weight: .bold))
+                .foregroundStyle(.white.opacity(0.10))
+                .rotationEffect(.degrees(-14))
+                .offset(x: 10, y: 14)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Image(systemName: context.state.isRunning ? "book.fill" : "pause.fill")
+                        .font(.system(size: 9, weight: .bold))
+
+                    Text(context.attributes.subjectName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .foregroundStyle(.white)
+
+                ElapsedTimeText(state: context.state, alignment: .leading)
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .opacity(context.state.isRunning ? 1.0 : 0.65)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
         .background(
             LinearGradient(
