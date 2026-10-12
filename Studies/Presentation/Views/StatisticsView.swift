@@ -50,9 +50,8 @@ struct StatisticsView: View {
                     .accessibilityLabel("その他のオプション")
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(GradientBackdrop())
         }
-        .background(Color(.systemGroupedBackground))
         .ignoresSafeArea(.container, edges: .top)
         .sheet(isPresented: $showStudyRecordList) {
             StudyRecordListView()

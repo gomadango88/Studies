@@ -77,30 +77,13 @@ struct TimelineView: View {
                     }
                 }
             }
-            .background(backdrop)
+            .background(GradientBackdrop())
         }
     }
     
     // MARK: - ウィジェット更新メソッド
     private func updateWidgets() async {
         await WidgetUpdateService.update(using: diContainer)
-    }
-
-    private var backdrop: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(.systemGroupedBackground), Color(.systemBackground)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            LinearGradient(
-                colors: [Color.blue.opacity(0.12), Color.purple.opacity(0.12)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .blur(radius: 80)
-        }
-        .ignoresSafeArea()
     }
     
     // MARK: - Views
@@ -288,10 +271,7 @@ struct OptimizedTimelineRecordCard: View {
             }
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .glassCard(cornerRadius: 12)
         .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
     }
     

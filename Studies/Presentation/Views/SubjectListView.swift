@@ -69,6 +69,7 @@ struct SubjectListView: View {
                     addButton
                 }
             }
+            .background(GradientBackdrop())
         }
         .task {
             await initializeViewModel()
@@ -229,6 +230,7 @@ struct SubjectListView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
     }
 
     

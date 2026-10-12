@@ -263,7 +263,7 @@ struct GoalSettingView: View {
                     }
                 }
             }
-            .background(Color(.systemGroupedBackground))
+            .background(GradientBackdrop())
             .navigationTitle("今日の目標")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -298,7 +298,6 @@ struct GoalSettingView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
         .ignoresSafeArea(.container, edges: .top)
     }
     
@@ -399,7 +398,6 @@ struct GoalSettingView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -468,8 +466,7 @@ struct DailySummaryCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
+        .glassCard(cornerRadius: 24)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("今日の学習、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentageText)達成、\(progress.streakDays)日連続")
@@ -563,8 +560,7 @@ struct DailyGoalCard: View {
             }
         }
         .padding()
-        .background(Color(.secondarySystemGroupedBackground))
-        .cornerRadius(24)
+        .glassCard(cornerRadius: 24)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
