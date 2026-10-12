@@ -38,6 +38,9 @@ struct StudyTimeCharts: View {
     // 変化せず、減速アニメーション中の再ターゲティングによるガクつきを起こさない。
     @State private var monthScrollAnchor = ChartScrollAnchor(StudyTimeCharts.todayScrollPosition(for: .thirtyDays))
 
+    @State private var showDatePickerSheet = false
+    @State private var tempDateSelection = Date()
+
     init() {
         _scrollPos = State(initialValue: Self.todayScrollPosition(for: .sevenDays))
     }
@@ -368,13 +371,24 @@ struct StudyTimeCharts: View {
 
                     // 「今日」ボタンは廃止し、代わりにタブを開く（開き直す）たびに
                     // 必ず最近のページへ自動的に戻すようにしている（body末尾のonAppearを参照）。
-                    HStack {
+                    HStack(spacing: 8) {
                         Text(dateRangeString)
                             .font(.callout)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                             .truncationMode(.middle)
+
+                        Button {
+                            tempDateSelection = alignedVisibleRange().start
+                            showDatePickerSheet = true
+                        } label: {
+                            Image(systemName: "calendar")
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(rows.isEmpty)
+                        .accessibilityLabel("表示期間を変更")
+
                         Spacer()
                     }
                 }
@@ -427,6 +441,33 @@ struct StudyTimeCharts: View {
             lastLoadedSpan = .sevenDays
             scrollPos = getTodayScrollPosition()
         }
+        .sheet(isPresented: $showDatePickerSheet) {
+            datePickerSheet
+        }
+    }
+
+    private var datePickerSheet: some View {
+        // 選択できるのはスクロール可能な範囲（最初の記録を含むページ〜今日）のみ
+        let pickerRange = scrollPositionBounds(for: span).lower...Date()
+
+        return NavigationStack {
+            DatePicker(
+                "",
+                selection: $tempDateSelection,
+                in: pickerRange,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+            .labelsHidden()
+            .padding()
+            .onChange(of: tempDateSelection) { _, newValue in
+                scrollPos = clampedPageAlignedScrollPosition(newValue, for: span)
+                showDatePickerSheet = false
+            }
+            .navigationTitle("表示する日付を選択")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium])
     }
 
     // バーの不透明度を決める。

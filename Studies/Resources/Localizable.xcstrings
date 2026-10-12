@@ -3139,12 +3139,32 @@
         }
       }
     },
+    "表示する日付を選択" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a Date"
+          }
+        }
+      }
+    },
     "表示期間" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time Range"
+          }
+        }
+      }
+    },
+    "表示期間を変更" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Date Range"
           }
         }
       }
