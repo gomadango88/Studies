@@ -382,66 +382,6 @@
         }
       }
     },
-    "%lld年" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld"
-          }
-        }
-      }
-    },
-    "%lld年%lld月" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld"
-          }
-        }
-      }
-    },
-    "%lld年%lld月〜%lld年%lld月" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld–%3$lld/%4$lld"
-          }
-        }
-      }
-    },
-    "%lld年%lld月%lld日〜%lld年%lld月%lld日" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld/%3$lld–%4$lld/%5$lld/%6$lld"
-          }
-        }
-      }
-    },
-    "%lld年%lld月%lld日〜%lld日" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld/%3$lld–%4$lld"
-          }
-        }
-      }
-    },
-    "%lld年%lld月%lld日〜%lld月%lld日" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld/%2$lld/%3$lld–%4$lld/%5$lld"
-          }
-        }
-      }
-    },
     "%lld日" : {
       "localizations" : {
         "en" : {
