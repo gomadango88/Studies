@@ -4,6 +4,102 @@
     "" : {
 
     },
+    "Adds a study record with a subject and study time without using the stopwatch. You can also choose the date." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adds a study record with a subject and study time without using the stopwatch. You can also choose the date."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストップウォッチを使わずに、教材と学習時間を指定して学習記録を追加します。日付も指定できます。"
+          }
+        }
+      }
+    },
+    "Opens the Record, Statistics, Goals, or History tab in Studies." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the Record, Statistics, Goals, or History tab in Studies."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Studiesの記録・統計・目標・履歴タブを開きます。"
+          }
+        }
+      }
+    },
+    "Opens the study session screen for the chosen subject in Studies." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opens the study session screen for the chosen subject in Studies."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Studiesで、選んだ教材の学習セッション画面を開きます。"
+          }
+        }
+      }
+    },
+    "Starts the study stopwatch for the chosen subject and shows the elapsed time in a Live Activity." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts the study stopwatch for the chosen subject and shows the elapsed time in a Live Activity."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選んだ教材の学習ストップウォッチを開始し、経過時間をライブアクティビティに表示します。"
+          }
+        }
+      }
+    },
+    "Stops the current study session and saves the elapsed time as a study record." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the current study session and saves the elapsed time as a study record."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "実行中の学習セッションを終了し、経過時間を学習記録として保存します。"
+          }
+        }
+      }
+    },
+    "Tells you how long you've studied today and your progress toward today's goal." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tells you how long you've studied today and your progress toward today's goal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "今日の合計学習時間と、今日の目標に対する達成率を伝えます。"
+          }
+        }
+      }
+    },
     "「%@」と優先度が重複しています。\n\n同じ曜日に適用される複数のスケジュールが同じ優先度を持つことはできません。異なる優先度を設定してください。" : {
       "localizations" : {
         "en" : {

@@ -10,6 +10,7 @@ import os
 // LiveActivityIntentに準拠することで、Live Activityの開始をバックグラウンド(Siri/ショートカット経由)から許可する
 struct StartStudySessionIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Start Studying"
+    static var description = IntentDescription("Starts the study stopwatch for the chosen subject and shows the elapsed time in a Live Activity.")
 
     @Parameter(title: "Subject")
     var subject: SubjectEntity

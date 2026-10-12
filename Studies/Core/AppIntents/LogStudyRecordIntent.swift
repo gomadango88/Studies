@@ -9,6 +9,7 @@ import os
 
 struct LogStudyRecordIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Study Time"
+    static var description = IntentDescription("Adds a study record with a subject and study time without using the stopwatch. You can also choose the date.")
 
     @Parameter(title: "Subject")
     var subject: SubjectEntity

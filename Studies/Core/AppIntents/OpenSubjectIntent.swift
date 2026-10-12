@@ -8,6 +8,7 @@ import Foundation
 
 struct OpenSubjectIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Subject"
+    static var description = IntentDescription("Opens the study session screen for the chosen subject in Studies.")
     static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Subject")

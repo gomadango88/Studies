@@ -9,6 +9,7 @@ import os
 
 struct StopStudySessionIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Stop Studying"
+    static var description = IntentDescription("Stops the current study session and saves the elapsed time as a study record.")
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {

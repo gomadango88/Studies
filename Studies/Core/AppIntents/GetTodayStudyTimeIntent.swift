@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GetTodayStudyTimeIntent: AppIntent {
     static var title: LocalizedStringResource = "Get Today's Study Time"
+    static var description = IntentDescription("Tells you how long you've studied today and your progress toward today's goal.")
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<Measurement<UnitDuration>> & ProvidesDialog & ShowsSnippetView {

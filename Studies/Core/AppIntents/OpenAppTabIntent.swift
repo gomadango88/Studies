@@ -24,6 +24,7 @@ enum StudiesAppTab: String, AppEnum {
 
 struct OpenAppTabIntent: AppIntent {
     static var title: LocalizedStringResource = "Open Studies Tab"
+    static var description = IntentDescription("Opens the Record, Statistics, Goals, or History tab in Studies.")
     static var openAppWhenRun: Bool = true
 
     @Parameter(title: "Tab", default: .stats)
