@@ -14,9 +14,9 @@ public enum StudyRecordUseCaseError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidDuration:
-            return "学習時間は0より大きい値を入力してください"
+            return String(localized: "学習時間は0より大きい値を入力してください")
         case .subjectNotFound:
-            return "指定された教材が見つかりません"
+            return String(localized: "指定された教材が見つかりません")
         }
     }
 }

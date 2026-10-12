@@ -63,7 +63,7 @@ class StudySessionViewModel {
     
     func loadTodayRecords() async {
         guard let useCase = studyRecordUseCase else {
-            loadErrorMessage = "データの読み込み準備中です。しばらくお待ちください。"
+            loadErrorMessage = String(localized: "データの読み込み準備中です。しばらくお待ちください。")
             return
         }
 
@@ -79,7 +79,7 @@ class StudySessionViewModel {
             loadErrorMessage = nil
 
         } catch {
-            loadErrorMessage = "今日の記録の読み込みに失敗しました: \(error.localizedDescription)"
+            loadErrorMessage = String(localized: "今日の記録の読み込みに失敗しました: \(error.localizedDescription)")
             Logger.session.error("Error loading today records: \(error)")
         }
     }
@@ -87,7 +87,7 @@ class StudySessionViewModel {
     func saveStudyRecordWithStopwatch(inputHours: Int, inputMinutes: Int, stopwatchElapsed: TimeInterval) async -> Bool {
         
         guard let useCase = studyRecordUseCase else {
-            errorMessage = "学習記録の保存機能が利用できません"
+            errorMessage = String(localized: "学習記録の保存機能が利用できません")
             return false
         }
         
@@ -115,7 +115,7 @@ class StudySessionViewModel {
             if let useCaseError = error as? StudyRecordUseCaseError {
                 errorMessage = useCaseError.errorDescription
             } else {
-                errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(localized: "記録の保存に失敗しました: \(error.localizedDescription)")
             }
             Logger.session.error("Error saving record: \(error)")
             isSaving = false
@@ -125,7 +125,7 @@ class StudySessionViewModel {
     
     func deleteRecord(_ record: StudyRecord) async {
         guard let useCase = studyRecordUseCase else {
-            errorMessage = "削除機能が利用できません"
+            errorMessage = String(localized: "削除機能が利用できません")
             return
         }
         
@@ -139,7 +139,7 @@ class StudySessionViewModel {
             if let useCaseError = error as? StudyRecordUseCaseError {
                 errorMessage = useCaseError.errorDescription
             } else {
-                errorMessage = "記録の削除に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(localized: "記録の削除に失敗しました: \(error.localizedDescription)")
             }
             Logger.session.error("Error deleting record: \(error)")
         }

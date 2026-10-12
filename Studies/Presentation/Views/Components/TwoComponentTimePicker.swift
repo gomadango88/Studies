@@ -62,15 +62,15 @@ struct TwoComponentTimePicker: UIViewRepresentable {
         func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
             if component == 0 {
                 let h = parent.hoursRange[row]
-                return "\(h) 時間"
+                return String(localized: "\(h) 時間")
             } else {
                 let m = parent.minutesRange[row]
-                return "\(m) 分"
+                return String(localized: "\(m) 分")
             }
         }
 
         func pickerView(_ pickerView: UIPickerView, accessibilityLabelForComponent component: Int) -> String? {
-            component == 0 ? "時間" : "分"
+            component == 0 ? String(localized: "時間") : String(localized: "分")
         }
 
         func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {

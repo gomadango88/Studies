@@ -1,0 +1,155 @@
+{
+  "sourceLanguage" : "ja",
+  "strings" : {
+    "%@ 達成" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ Complete"
+          }
+        }
+      }
+    },
+    "%lld / %lld 分" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld / %lld min"
+          }
+        }
+      }
+    },
+    "Configuration" : {
+
+    },
+    "Favorite Emoji" : {
+
+    },
+    "This is an example widget." : {
+
+    },
+    "スケジュールを\n設定してください" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please set up\na schedule"
+          }
+        }
+      }
+    },
+    "タップして学習スケジュールを設定" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to set up a study schedule"
+          }
+        }
+      }
+    },
+    "一時停止" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paused"
+          }
+        }
+      }
+    },
+    "今日の学習" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today’s Study"
+          }
+        }
+      }
+    },
+    "今日の学習目標" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Today’s Study Goal"
+          }
+        }
+      }
+    },
+    "今日の学習目標の進捗を表示します。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows your progress toward today’s study goal."
+          }
+        }
+      }
+    },
+    "学習中" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Studying"
+          }
+        }
+      }
+    },
+    "学習時間を追跡します。" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracks your study time."
+          }
+        }
+      }
+    },
+    "学習記録" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Study Record"
+          }
+        }
+      }
+    },
+    "目標時間が設定されていません" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Goal Time Set"
+          }
+        }
+      }
+    },
+    "目標未設定" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No Goal Set"
+          }
+        }
+      }
+    },
+    "目標達成: %lld日連続" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goal met: %lld-day streak"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

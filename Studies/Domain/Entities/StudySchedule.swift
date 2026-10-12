@@ -41,12 +41,12 @@ struct StudySchedule: Identifiable, Codable {
     
     var priorityText: String {
         switch priority {
-        case 1: return "最低"
-        case 2: return "低"
-        case 3: return "中"
-        case 4: return "高"
-        case 5: return "最高"
-        default: return "中"
+        case 1: return String(localized: "最低")
+        case 2: return String(localized: "低")
+        case 3: return String(localized: "中")
+        case 4: return String(localized: "高")
+        case 5: return String(localized: "最高")
+        default: return String(localized: "中")
         }
     }
     

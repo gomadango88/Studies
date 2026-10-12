@@ -54,7 +54,9 @@ struct CustomProgressBar: View {
         .frame(height: height)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("達成率")
-        .accessibilityValue("\(Int(max(0, min(1, progress)) * 100))%")
+        // 数字+%は言語非依存のためローカライズ不要。String引数のオーバーロードを明示的に選ばせ、
+        // フォーマットキーとして解釈されないようにする(裸の"%"がString(format:)に渡るのを避ける)
+        .accessibilityValue(String(Int(max(0, min(1, progress)) * 100)) + "%")
     }
     
     private var progressBarFill: some ShapeStyle {
@@ -138,7 +140,7 @@ class GoalViewModel {
             
             let overallGoal = StudyGoal(
                 subjectId: nil,
-                subjectName: "全体",
+                subjectName: String(localized: "全体"),
                 subjectColor: .purple,
                 dailyGoalMinutes: schedule.dailyGoalMinutes,
                 isEnabled: true
@@ -203,7 +205,7 @@ class GoalViewModel {
 
             let overallProgress = StudyProgress(
                 subjectId: nil,
-                subjectName: "全体",
+                subjectName: String(localized: "全体"),
                 todayMinutes: Int(totalTodayTime / 60),
                 weekMinutes: Int(totalWeekTime / 60),
                 monthMinutes: Int(totalMonthTime / 60),
@@ -383,14 +385,14 @@ struct GoalSettingView: View {
     private func dailyGoalsView(viewModel: GoalViewModel) -> some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                if let overallGoal = viewModel.goals.first(where: { $0.subjectName == "全体" }),
-                   let overallProgress = viewModel.progress.first(where: { $0.subjectName == "全体" }) {
+                if let overallGoal = viewModel.goals.first(where: { $0.subjectId == nil }),
+                   let overallProgress = viewModel.progress.first(where: { $0.subjectId == nil }) {
                     DailySummaryCard(goal: overallGoal, progress: overallProgress)
                 }
-                
+
                 ForEach(Array(zip(
-                    viewModel.goals.filter { $0.isEnabled && $0.subjectName != "全体" },
-                    viewModel.progress.filter { $0.subjectName != "全体" }
+                    viewModel.goals.filter { $0.isEnabled && $0.subjectId != nil },
+                    viewModel.progress.filter { $0.subjectId != nil }
                 )), id: \.0.id) { goal, progress in
                     DailyGoalCard(goal: goal, progress: progress)
                 }
@@ -417,7 +419,12 @@ struct DailySummaryCard: View {
         guard goal.dailyGoalMinutes > 0 else { return 0 }
         return min(Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes), 1.0)
     }
-    
+
+    // フォーマットキーに裸の"%"が混在するのを避けるため、"数字+%"を先に組み立ててから%@として埋め込む
+    private var achievementPercentageText: String {
+        "\(achievementPercentage)%"
+    }
+
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -425,15 +432,15 @@ struct DailySummaryCard: View {
                     Text("今日の学習")
                         .font(.headline)
                         .fontWeight(.bold)
-                    
+
                     Text("\(progress.todayMinutes) / \(goal.dailyGoalMinutes) 分")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: progress.todayMinutes >= goal.dailyGoalMinutes ? "checkmark.circle.fill" : "clock")
                     .font(.system(size: 30))
                     .foregroundColor(progress.todayMinutes >= goal.dailyGoalMinutes ? .green : .orange)
@@ -446,14 +453,14 @@ struct DailySummaryCard: View {
                 height: 10,
                 cornerRadius: 6
             )
-            
+
             HStack {
-                Text("\(achievementPercentage)% 達成")
+                Text("\(achievementPercentageText) 達成")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                
+
                 Spacer()
-                
+
                 Text("目標達成: \(progress.streakDays)日連続")
                     .font(.subheadline)
                     .fontWeight(.medium)
@@ -465,7 +472,7 @@ struct DailySummaryCard: View {
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 1)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("今日の学習、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、\(progress.streakDays)日連続")
+        .accessibilityLabel("今日の学習、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentageText)達成、\(progress.streakDays)日連続")
     }
 }
 
@@ -485,13 +492,18 @@ struct DailyGoalCard: View {
         let percentage = Double(progress.todayMinutes) / Double(goal.dailyGoalMinutes) * 100
         return Int(min(percentage, 100))
     }
-    
+
+    // フォーマットキーに裸の"%"が混在するのを避けるため、"数字+%"を先に組み立ててから%@として埋め込む
+    private var achievementPercentageText: String {
+        "\(achievementPercentage)%"
+    }
+
     private var accessibilitySummary: String {
         if progress.todayMinutes >= goal.dailyGoalMinutes {
-            return "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、目標達成"
+            return String(localized: "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentageText)達成、目標達成")
         } else {
             let remainingMinutes = max(goal.dailyGoalMinutes - progress.todayMinutes, 0)
-            return "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentage)%達成、残り\(remainingMinutes)分"
+            return String(localized: "\(goal.subjectName)、\(progress.todayMinutes)分 / \(goal.dailyGoalMinutes)分、\(achievementPercentageText)達成、残り\(remainingMinutes)分")
         }
     }
 
@@ -524,7 +536,7 @@ struct DailyGoalCard: View {
                 )
                 
                 HStack {
-                    Text("\(achievementPercentage)% 達成")
+                    Text("\(achievementPercentageText) 達成")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     

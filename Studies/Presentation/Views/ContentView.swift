@@ -45,7 +45,10 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            Task { await WidgetUpdateService.update(using: diContainer) }
+            Task {
+                await WidgetUpdateService.update(using: diContainer)
+                await SubjectSpotlightIndexer.reindexAll()
+            }
 
             // オンボーディング未完了時はシートとの競合を避けるため、完了後にまとめて実行する
             if hasCompletedOnboarding {
@@ -138,7 +141,45 @@ struct ContentView: View {
             return
         }
 
+        // New format: studies://subject/<uuid> (OpenSubjectIntent・Spotlight経由)
+        if url.host == "subject" {
+            handleSubjectDeepLink(url)
+            return
+        }
+
         Logger.ui.warning("Unknown deep link host: \(url.host ?? "nil")")
+    }
+
+    private func handleSubjectDeepLink(_ url: URL) {
+        withAnimation(.easeInOut(duration: 0.3)) { selectedTab = .record }
+
+        // オンボーディング未完了時はセッションシートとの競合を避けるためタブ切替のみ行う
+        guard hasCompletedOnboarding else {
+            return
+        }
+
+        guard let idString = url.pathComponents.dropFirst().first,
+              let subjectId = UUID(uuidString: idString) else {
+            Logger.ui.warning("Invalid subject id in URL: \(url.absoluteString)")
+            return
+        }
+
+        Task {
+            do {
+                let subjects = try await diContainer.subjectUseCase.getAllSubjects()
+                guard let subject = subjects.first(where: { $0.id == subjectId }) else {
+                    Logger.ui.warning("Subject not found for deep link: \(subjectId)")
+                    return
+                }
+
+                await MainActor.run {
+                    self.activeSubject = subject
+                    self.shouldShowActiveSession = true
+                }
+            } catch {
+                Logger.ui.error("Error loading subjects for deep link: \(error)")
+            }
+        }
     }
     
     private func runPostLaunchChecks() {

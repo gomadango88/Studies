@@ -55,7 +55,7 @@ class TimelineViewModel {
             groupRecordsByDate()
             
         } catch {
-            errorMessage = "データの読み込みに失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "データの読み込みに失敗しました: \(error.localizedDescription)")
             Logger.ui.error("Error loading timeline: \(error)")
         }
         

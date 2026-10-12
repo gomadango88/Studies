@@ -52,7 +52,7 @@ struct ScheduleEditorView: View {
                         Button(action: { withAnimation { showingDailyGoalWheel.toggle() } }) {
                             let hours = max(0, dailyGoal / 60)
                             let minutes = max(0, dailyGoal % 60)
-                            Text(String(format: "%d時間%02d分", hours, minutes))
+                            Text(String(format: String(localized: "%d時間%02d分"), hours, minutes))
                                 .font(.body)
                                 .foregroundColor(showingDailyGoalWheel ? .accentColor : .primary)
                                 .padding(.horizontal, 16)
@@ -351,10 +351,10 @@ struct ScheduleEditorView: View {
 
     private func createConflictMessage() -> String {
         if conflictingScheduleNames.count == 1 {
-            return "「\(conflictingScheduleNames[0])」と優先度が重複しています。\n\n同じ曜日に適用される複数のスケジュールが同じ優先度を持つことはできません。異なる優先度を設定してください。"
+            return String(localized: "「\(conflictingScheduleNames[0])」と優先度が重複しています。\n\n同じ曜日に適用される複数のスケジュールが同じ優先度を持つことはできません。異なる優先度を設定してください。")
         } else {
             let scheduleList = conflictingScheduleNames.joined(separator: "」、「")
-            return "「\(scheduleList)」と優先度が重複しています。\n\n同じ曜日に適用される複数のスケジュールが同じ優先度を持つことはできません。異なる優先度を設定してください。"
+            return String(localized: "「\(scheduleList)」と優先度が重複しています。\n\n同じ曜日に適用される複数のスケジュールが同じ優先度を持つことはできません。異なる優先度を設定してください。")
         }
     }
 
@@ -363,7 +363,7 @@ struct ScheduleEditorView: View {
         if let existingSchedule = schedule {
             savedSchedule = StudySchedule(
                 id: existingSchedule.id,
-                name: name.isEmpty ? "無題のスケジュール" : name,
+                name: name.isEmpty ? String(localized: "無題のスケジュール") : name,
                 dailyGoalMinutes: dailyGoal,
                 selectedWeekdays: selectedWeekdays,
                 isEnabled: isEnabled,
@@ -373,7 +373,7 @@ struct ScheduleEditorView: View {
             )
         } else {
             savedSchedule = StudySchedule(
-                name: name.isEmpty ? "無題のスケジュール" : name,
+                name: name.isEmpty ? String(localized: "無題のスケジュール") : name,
                 dailyGoalMinutes: dailyGoal,
                 selectedWeekdays: selectedWeekdays,
                 isEnabled: isEnabled,
@@ -388,12 +388,12 @@ struct ScheduleEditorView: View {
 
     private func priorityText(for priority: Int) -> String {
         switch priority {
-        case 1: return "最低"
-        case 2: return "低"
-        case 3: return "中"
-        case 4: return "高"
-        case 5: return "最高"
-        default: return "中"
+        case 1: return String(localized: "最低")
+        case 2: return String(localized: "低")
+        case 3: return String(localized: "中")
+        case 4: return String(localized: "高")
+        case 5: return String(localized: "最高")
+        default: return String(localized: "中")
         }
     }
 

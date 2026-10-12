@@ -163,7 +163,7 @@ struct BackupView: View {
             case .success:
                 backupStatus = .completed
             case .failure(let error):
-                backupStatus = .failed("エクスポートエラー: \(error.localizedDescription)")
+                backupStatus = .failed(String(localized: "エクスポートエラー: \(error.localizedDescription)"))
                 Logger.ui.error("バックアップエラー: \(error)")
             }
         }
@@ -202,7 +202,7 @@ struct BackupView: View {
             
         } catch {
             await MainActor.run {
-                self.backupStatus = .failed("データ取得エラー: \(error.localizedDescription)")
+                self.backupStatus = .failed(String(localized: "データ取得エラー: \(error.localizedDescription)"))
             }
             Logger.ui.error("バックアップデータ準備エラー: \(error)")
         }

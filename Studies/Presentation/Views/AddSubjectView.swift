@@ -16,11 +16,11 @@ struct AddSubjectView: View {
     
     private let presetColors: [Color] = [.blue, .green, .orange, .red, .purple]
     private let presetColorNames: [Color: String] = [
-        .blue: "青",
-        .green: "緑",
-        .orange: "オレンジ",
-        .red: "赤",
-        .purple: "紫"
+        .blue: String(localized: "青"),
+        .green: String(localized: "緑"),
+        .orange: String(localized: "オレンジ"),
+        .red: String(localized: "赤"),
+        .purple: String(localized: "紫")
     ]
 
     private var isCustomColorSelected: Bool {
@@ -79,7 +79,7 @@ struct AddSubjectView: View {
                                 )
                                 .onTapGesture { viewModel.selectedColor = color }
                                 .accessibilityElement(children: .ignore)
-                                .accessibilityLabel(presetColorNames[color] ?? "色")
+                                .accessibilityLabel(presetColorNames[color] ?? String(localized: "色"))
                                 .accessibilityAddTraits(.isButton)
                                 .accessibilityAddTraits(viewModel.selectedColor == color ? .isSelected : [])
                         }
@@ -113,9 +113,17 @@ struct AddSubjectView: View {
                             .accessibilityHidden(true)
 
                         VStack(alignment: .leading) {
-                            Text(viewModel.subjectName.isEmpty ? "教材名" : viewModel.subjectName)
-                                .font(.headline)
-                            
+                            // Text(_:)はString型の三項式には verbatim（非ローカライズ）のオーバーロードが
+                            // 選択されるため、分岐ごとにTextを分けてリテラル側をLocalizedStringKeyとして扱わせる
+                            Group {
+                                if viewModel.subjectName.isEmpty {
+                                    Text("教材名")
+                                } else {
+                                    Text(viewModel.subjectName)
+                                }
+                            }
+                            .font(.headline)
+
                             Text("プレビュー")
                                 .font(.caption)
                                 .foregroundColor(.secondary)

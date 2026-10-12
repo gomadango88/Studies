@@ -71,7 +71,6 @@ extension StudyRecord {
     var formattedStudyDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "ja_JP")
         return formatter.string(from: studyDate)
     }
     

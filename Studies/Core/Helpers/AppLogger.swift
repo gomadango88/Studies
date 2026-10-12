@@ -14,4 +14,5 @@ extension Logger {
     static let liveActivity = Logger(subsystem: subsystem, category: "liveActivity")
     static let widget = Logger(subsystem: subsystem, category: "widget")
     static let ui = Logger(subsystem: subsystem, category: "ui")
+    static let intents = Logger(subsystem: subsystem, category: "intents")   // App Intents・Spotlight連携
 }

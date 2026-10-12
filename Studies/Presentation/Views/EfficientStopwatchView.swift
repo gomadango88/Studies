@@ -87,9 +87,9 @@ struct EfficientStopwatchView: View {
         let seconds = totalSeconds % 60
 
         var components: [String] = []
-        if hours > 0 { components.append("\(hours)時間") }
-        if minutes > 0 || hours > 0 { components.append("\(minutes)分") }
-        components.append("\(seconds)秒")
+        if hours > 0 { components.append(String(localized: "\(hours)時間")) }
+        if minutes > 0 || hours > 0 { components.append(String(localized: "\(minutes)分")) }
+        components.append(String(localized: "\(seconds)秒"))
         return components.joined()
     }
 }

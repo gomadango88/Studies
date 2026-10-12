@@ -11,15 +11,13 @@ extension Date {
     var japaneseDateString: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "ja_JP")
         return formatter.string(from: self)
     }
-    
+
 
     var shortDateString: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "M/d"
-        formatter.locale = Locale(identifier: "ja_JP")
         return formatter.string(from: self)
     }
 

@@ -98,6 +98,7 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
     }
 
     func archiveRecordsByMonth(_ monthYear: String) async throws {
+        // 表示用ではなく月別突合キーのためロケール固定(和暦設定端末対策)
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"
         monthFormatter.locale = Locale(identifier: "ja_JP")
@@ -116,6 +117,7 @@ class StudyRecordUseCase: StudyRecordUseCaseProtocol {
     }
 
     func unarchiveRecordsByMonth(_ monthYear: String) async throws {
+        // 表示用ではなく月別突合キーのためロケール固定(和暦設定端末対策)
         let monthFormatter = DateFormatter()
         monthFormatter.dateFormat = "yyyy-MM"
         monthFormatter.locale = Locale(identifier: "ja_JP")

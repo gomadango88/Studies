@@ -32,10 +32,11 @@ class SubjectListViewModel {
         
         do {
             subjects = try await useCase.getAllSubjects()
+            Task { await SubjectSpotlightIndexer.reindexAll() }
         } catch {
-            errorMessage = "教材の読み込みに失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "教材の読み込みに失敗しました: \(error.localizedDescription)")
         }
-        
+
         isLoading = false
     }
     
@@ -46,7 +47,7 @@ class SubjectListViewModel {
             try await useCase.deleteSubject(subject)
             await loadSubjects()
         } catch {
-            errorMessage = "教材の削除に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "教材の削除に失敗しました: \(error.localizedDescription)")
         }
     }
     
@@ -60,7 +61,7 @@ class SubjectListViewModel {
         do {
             try await useCase.reorderSubjects(reorderedSubjects)
         } catch {
-            errorMessage = "並び順の保存に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "並び順の保存に失敗しました: \(error.localizedDescription)")
             await loadSubjects()
         }
     }
@@ -80,7 +81,7 @@ class SubjectListViewModel {
         do {
             try await subjectUseCase?.reorderSubjects(subjects)
         } catch {
-            errorMessage = "並び順の保存に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "並び順の保存に失敗しました: \(error.localizedDescription)")
             await loadSubjects()
         }
     }
@@ -91,7 +92,7 @@ class SubjectListViewModel {
         do {
             try await useCase.reorderSubjects(subjects)
         } catch {
-            errorMessage = "並び順の保存に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "並び順の保存に失敗しました: \(error.localizedDescription)")
         }
     }
     
@@ -120,7 +121,7 @@ class SubjectListViewModel {
 
         } catch {
             Logger.ui.error("Failed to toggle pin: \(error)")
-            errorMessage = "ピン留めの更新に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "ピン留めの更新に失敗しました: \(error.localizedDescription)")
         }
     }
 
@@ -169,7 +170,7 @@ class SubjectListViewModel {
 
         } catch {
             Logger.ui.error("Failed section move: \(error)")
-            errorMessage = "並び順の保存に失敗しました: \(error.localizedDescription)"
+            errorMessage = String(localized: "並び順の保存に失敗しました: \(error.localizedDescription)")
             await loadSubjects()
         }
     }

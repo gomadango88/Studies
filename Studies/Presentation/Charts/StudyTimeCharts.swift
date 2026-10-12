@@ -167,7 +167,7 @@ struct StudyTimeCharts: View {
             // 暦の1ヶ月をそのまま表示しているため「2026年7月」のようにシンプルに表示する
             let year = calendar.component(.year, from: rangeStart)
             let month = calendar.component(.month, from: rangeStart)
-            return "\(year)年\(month)月"
+            return String(localized: "\(year)年\(month)月")
 
         case .sevenDays:
             let endDisplay = calendar.date(byAdding: .day, value: -1, to: rangeEnd) ?? rangeEnd
@@ -177,26 +177,26 @@ struct StudyTimeCharts: View {
             let endYear = calendar.component(.year, from: endDisplay)
             let endMonth = calendar.component(.month, from: endDisplay)
             let endDay = calendar.component(.day, from: endDisplay)
-            
+
             if startYear == endYear && startMonth == endMonth {
-                return "\(startYear)年\(startMonth)月\(startDay)日〜\(endDay)日"
+                return String(localized: "\(startYear)年\(startMonth)月\(startDay)日〜\(endDay)日")
             } else if startYear == endYear {
-                return "\(startYear)年\(startMonth)月\(startDay)日〜\(endMonth)月\(endDay)日"
+                return String(localized: "\(startYear)年\(startMonth)月\(startDay)日〜\(endMonth)月\(endDay)日")
             } else {
-                return "\(startYear)年\(startMonth)月\(startDay)日〜\(endYear)年\(endMonth)月\(endDay)日"
+                return String(localized: "\(startYear)年\(startMonth)月\(startDay)日〜\(endYear)年\(endMonth)月\(endDay)日")
             }
-            
+
         case .twelveMonths:
             let endDisplay = calendar.date(byAdding: .month, value: -1, to: rangeEnd) ?? rangeEnd
             let startYear = calendar.component(.year, from: rangeStart)
             let startMonth = calendar.component(.month, from: rangeStart)
             let endYear = calendar.component(.year, from: endDisplay)
             let endMonth = calendar.component(.month, from: endDisplay)
-            
+
             if startYear == endYear {
-                return "\(startYear)年"
+                return String(localized: "\(startYear)年")
             } else {
-                return "\(startYear)年\(startMonth)月〜\(endYear)年\(endMonth)月"
+                return String(localized: "\(startYear)年\(startMonth)月〜\(endYear)年\(endMonth)月")
             }
         }
     }
@@ -339,7 +339,8 @@ struct StudyTimeCharts: View {
             VStack(alignment: .leading, spacing: 12) {
                 Picker("表示期間", selection: $span) {
                     Text("週").tag(ChartSpan.sevenDays)
-                    Text("月").tag(ChartSpan.thirtyDays)
+                    // 曜日の「月(Mon)」と表示文字列が衝突するため、キーを明示的に分離する
+                    Text(String(localized: "chartSpan.month", defaultValue: "月")).tag(ChartSpan.thirtyDays)
                     Text("年").tag(ChartSpan.twelveMonths)
                 }
                 .pickerStyle(.segmented)
@@ -664,14 +665,12 @@ struct StudyTimeCharts: View {
     // DateFormatterの生成コストを避けるため使い回す（選択中はドラッグ移動のたびに呼ばれる）
     private static let dayTooltipFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy年M月d日(E)"
+        formatter.setLocalizedDateFormatFromTemplate("yMMMdE")
         return formatter
     }()
     private static let monthTooltipFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy年M月"
+        formatter.setLocalizedDateFormatFromTemplate("yyyyMMMM")
         return formatter
     }()
 
@@ -780,17 +779,19 @@ struct StudyTimeCharts: View {
                     .font(.system(size: 36, weight: .medium))
                     .foregroundColor(.primary)
                     .fontDesign(.rounded)
-                Text("時間")
+                // チャートの大数字の単位サフィックスは、Weekday(月曜日略称「月」)等との
+                // 表示文字列の衝突を避けるためキーを明示的に分離する
+                Text(String(localized: "chart.unit.hours", defaultValue: "時間"))
                     .font(.system(size: 18))
                     .foregroundColor(.secondary)
                     .fontWeight(.semibold)
-                
+
                 if mins > 0 {
                     Text("\(mins)")
                         .font(.system(size: 36, weight: .medium))
                         .foregroundColor(.primary)
                         .fontDesign(.rounded)
-                    Text("分")
+                    Text(String(localized: "chart.unit.minutes", defaultValue: "分"))
                         .font(.system(size: 18))
                         .foregroundColor(.secondary)
                         .fontWeight(.semibold)
@@ -800,7 +801,7 @@ struct StudyTimeCharts: View {
                     .font(.system(size: 36, weight: .medium))
                     .foregroundColor(.primary)
                     .fontDesign(.rounded)
-                Text("分")
+                Text(String(localized: "chart.unit.minutes", defaultValue: "分"))
                     .font(.system(size: 18))
                     .foregroundColor(.secondary)
                     .fontWeight(.semibold)
@@ -1116,7 +1117,6 @@ enum ChartSpan: CaseIterable {
     // スクロールのもたつきに直結する）。
     private static let weekdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
         formatter.dateFormat = "E"
         return formatter
     }()
@@ -1127,12 +1127,12 @@ enum ChartSpan: CaseIterable {
     
     private func monthString(from date: Date) -> String {
         let month = Calendar.current.component(.month, from: date)
-        return "\(month)月"
+        return String(localized: "\(month)月")
     }
-    
+
     private func dayOnlyString(from date: Date) -> String {
         let day = Calendar.current.component(.day, from: date)
-        return "\(day)日"
+        return String(localized: "\(day)日")
     }
 }
 

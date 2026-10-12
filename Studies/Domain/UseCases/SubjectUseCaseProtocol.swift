@@ -29,11 +29,11 @@ enum ValidationResult {
         case .valid:
             return nil
         case .empty:
-            return "教材名を入力してください"
+            return String(localized: "教材名を入力してください")
         case .tooLong:
-            return "教材名は50文字以内で入力してください"
+            return String(localized: "教材名は50文字以内で入力してください")
         case .duplicate:
-            return "同じ名前の教材が既に存在します"
+            return String(localized: "同じ名前の教材が既に存在します")
         }
     }
 }

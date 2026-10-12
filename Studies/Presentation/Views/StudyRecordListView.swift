@@ -29,9 +29,9 @@ struct MonthlySummary: Identifiable, Equatable {
     
     var formattedTotalTime: String {
         if totalHours > 0 {
-            return "\(totalHours)時間\(totalMinutes)分"
+            return String(localized: "\(totalHours)時間\(totalMinutes)分")
         } else {
-            return "\(Int(totalDuration / 60))分"
+            return String(localized: "\(Int(totalDuration / 60))分")
         }
     }
     
@@ -56,17 +56,17 @@ class StudyRecordListViewModel: ObservableObject {
     private var subjectUseCase: SubjectUseCaseProtocol
     private let calendar = Calendar.current
     
+    // 表示用ではなく月別突合キーのためロケール固定(和暦設定端末対策)
     private let monthFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
         formatter.locale = Locale(identifier: "ja_JP")
         return formatter
     }()
-    
+
     private let displayMonthFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy年M月"
-        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.setLocalizedDateFormatFromTemplate("yyyyMMMM")
         return formatter
     }()
     
@@ -183,17 +183,19 @@ struct StudyRecordListView: View {
         
         var title: String {
             switch self {
-            case .archive: return "アーカイブ"
-            case .unarchive: return "復元"
-            case .delete: return "完全削除"
+            // フィルタ表示の「アーカイブ(Archived)」と表示文字列が衝突するため、
+            // 動詞用法(Archiveする操作)はキーを明示的に分離する
+            case .archive: return String(localized: "action.archive", defaultValue: "アーカイブ")
+            case .unarchive: return String(localized: "復元")
+            case .delete: return String(localized: "完全削除")
             }
         }
-        
+
         var message: String {
             switch self {
-            case .archive: return "グラフ表示から除外しますが、データは保持されます"
-            case .unarchive: return "グラフ表示に復元します"
-            case .delete: return "データを完全に削除します（復元できません）"
+            case .archive: return String(localized: "グラフ表示から除外しますが、データは保持されます")
+            case .unarchive: return String(localized: "グラフ表示に復元します")
+            case .delete: return String(localized: "データを完全に削除します（復元できません）")
             }
         }
     }
@@ -395,7 +397,9 @@ struct MonthlySummaryRow: View {
                     Button {
                         onAction(.archive)
                     } label: {
-                        Label("アーカイブ", systemImage: "archivebox")
+                        // フィルタ表示の「アーカイブ(Archived)」と表示文字列が衝突するため、
+                        // 動詞用法(Archiveする操作)はキーを明示的に分離する
+                        Label(String(localized: "action.archive", defaultValue: "アーカイブ"), systemImage: "archivebox")
                     }
                 }
                 

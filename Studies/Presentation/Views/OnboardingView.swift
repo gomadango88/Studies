@@ -17,10 +17,10 @@ struct OnboardingView: View {
     }
 
     private let features: [Feature] = [
-        Feature(symbol: "stopwatch", title: "学習時間を記録", description: "教材ごとにストップウォッチで学習を記録できます", tint: .orange),
-        Feature(symbol: "chart.bar", title: "学習を振り返る", description: "日・週・月の学習時間をグラフで振り返れます", tint: .blue),
-        Feature(symbol: "flag.fill", title: "目標を管理", description: "週間目標と学習スケジュールを設定できます", tint: .green),
-        Feature(symbol: "platter.filled.top.iphone", title: "ロック画面にも対応", description: "ロック画面のLive Activityとウィジェットで進捗を確認できます", tint: .purple)
+        Feature(symbol: "stopwatch", title: String(localized: "学習時間を記録"), description: String(localized: "教材ごとにストップウォッチで学習を記録できます"), tint: .orange),
+        Feature(symbol: "chart.bar", title: String(localized: "学習を振り返る"), description: String(localized: "日・週・月の学習時間をグラフで振り返れます"), tint: .blue),
+        Feature(symbol: "flag.fill", title: String(localized: "目標を管理"), description: String(localized: "週間目標と学習スケジュールを設定できます"), tint: .green),
+        Feature(symbol: "platter.filled.top.iphone", title: String(localized: "ロック画面にも対応"), description: String(localized: "ロック画面のLive Activityとウィジェットで進捗を確認できます"), tint: .purple)
     ]
 
     var body: some View {

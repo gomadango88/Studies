@@ -300,11 +300,11 @@ struct OptimizedTimelineRecordCard: View {
         let minutes = Int(duration) % 3600 / 60
         
         if hours > 0 {
-            return "\(hours)時間\(minutes)分"
+            return String(localized: "\(hours)時間\(minutes)分")
         } else if minutes > 0 {
-            return "\(minutes)分"
+            return String(localized: "\(minutes)分")
         } else {
-            return "1分未満"
+            return String(localized: "1分未満")
         }
     }
 }
@@ -372,7 +372,6 @@ struct ManualRecordSheet: View {
                 
                 Section("日時") {
                     DatePicker("学習日時", selection: $selectedDate, in: ...endOfToday, displayedComponents: [.date, .hourAndMinute])
-                        .environment(\.locale, Locale(identifier: "ja_JP"))
                 }
                 
                 Section("学習時間") {

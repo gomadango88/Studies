@@ -45,7 +45,7 @@ class AddSubjectViewModel {
             if let useCaseError = error as? SubjectUseCaseError {
                 errorMessage = useCaseError.errorDescription
             } else {
-                errorMessage = "保存に失敗しました: \(error.localizedDescription)"
+                errorMessage = String(localized: "保存に失敗しました: \(error.localizedDescription)")
             }
             return false
         }

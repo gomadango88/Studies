@@ -202,7 +202,7 @@ struct RestoreView: View {
         case .success(let urls):
             guard let url = urls.first else {
                 await MainActor.run {
-                    restoreStatus = .failed("ファイルが選択されていません")
+                    restoreStatus = .failed(String(localized: "ファイルが選択されていません"))
                 }
                 return
             }
@@ -211,7 +211,7 @@ struct RestoreView: View {
             
         case .failure(let error):
             await MainActor.run {
-                restoreStatus = .failed("ファイル選択エラー: \(error.localizedDescription)")
+                restoreStatus = .failed(String(localized: "ファイル選択エラー: \(error.localizedDescription)"))
             }
         }
     }
@@ -221,7 +221,7 @@ struct RestoreView: View {
         
         guard url.startAccessingSecurityScopedResource() else {
             await MainActor.run {
-                restoreStatus = .failed("ファイルへのアクセス権限を取得できませんでした")
+                restoreStatus = .failed(String(localized: "ファイルへのアクセス権限を取得できませんでした"))
             }
             Logger.data.error("セキュリティスコープアクセス失敗")
             return
@@ -245,7 +245,7 @@ struct RestoreView: View {
             
         } catch {
             await MainActor.run {
-                restoreStatus = .failed("ファイル解析エラー: \(error.localizedDescription)")
+                restoreStatus = .failed(String(localized: "ファイル解析エラー: \(error.localizedDescription)"))
             }
             Logger.data.error("バックアップファイル読み込みエラー: \(error)")
         }
@@ -347,7 +347,7 @@ struct RestoreView: View {
             
         } catch {
             await MainActor.run {
-                restoreStatus = .failed("復元エラー: \(error.localizedDescription)")
+                restoreStatus = .failed(String(localized: "復元エラー: \(error.localizedDescription)"))
             }
             Logger.data.error("データ復元エラー: \(error)")
         }
@@ -357,7 +357,6 @@ struct RestoreView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "ja_JP")
         return formatter.string(from: date)
     }
 }

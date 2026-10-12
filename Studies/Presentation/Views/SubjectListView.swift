@@ -302,7 +302,15 @@ struct SubjectListView: View {
                 Image(systemName: subject.isPinned ? "pin.slash" : "pin")
             }
             .tint(subject.isPinned ? .gray : .orange)
-            .accessibilityLabel(subject.isPinned ? "ピン留めを解除" : "ピン留め")
+            // セクションヘッダの「ピン留め(Pinned)」と表示文字列が衝突するため、
+            // 動詞用法(Pinする操作)はキーを明示的に分離する。
+            // また、String型の三項式はTextと同じくverbatimオーバーロードが選ばれるため、
+            // 両分岐とも明示的にString(localized:)でローカライズ済みの値にしてから渡す
+            .accessibilityLabel(
+                subject.isPinned
+                    ? String(localized: "ピン留めを解除")
+                    : String(localized: "action.pin", defaultValue: "ピン留め")
+            )
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {

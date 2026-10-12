@@ -85,7 +85,12 @@ struct StudyGoalWidgetEntryView: View {
         guard entry.dailyGoal > 0 else { return 0 }
         return min(Double(entry.todayMinutes) / Double(entry.dailyGoal), 1.0)
     }
-    
+
+    // フォーマットキーに裸の"%"が混在するのを避けるため、"数字+%"を先に組み立ててから%@として埋め込む
+    private var achievementPercentageText: String {
+        "\(achievementPercentage)%"
+    }
+
     var body: some View {
         Link(destination: URL(string: "studies://studygoal")!) {
             Group {
@@ -119,7 +124,8 @@ struct StudyGoalWidgetEntryView: View {
                                 .foregroundColor(.green)
                                 .font(.system(size: 14))
                         }
-                        Text("\(achievementPercentage)%")
+                        // 数字+%は言語非依存のためローカライズ不要。Text(verbatim:)で直接表示する
+                        Text(verbatim: achievementPercentageText)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -189,7 +195,7 @@ struct StudyGoalWidgetEntryView: View {
                 )
                 
                 HStack {
-                    Text("\(achievementPercentage)% 達成")
+                    Text("\(achievementPercentageText) 達成")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     

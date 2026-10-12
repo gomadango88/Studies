@@ -180,12 +180,12 @@ struct WeeklyGoalScheduleView: View {
                 let topSchedule = sortedSchedules[0]
                 let conflictingSchedules = sortedSchedules.dropFirst().map { $0.name }
                 if !conflictingSchedules.isEmpty {
-                    conflicts.append("\(weekday.fullName): 「\(topSchedule.name)」が適用されます")
+                    conflicts.append(String(localized: "\(weekday.fullName): 「\(topSchedule.name)」が適用されます"))
                 }
             }
         }
         if !conflicts.isEmpty {
-            conflictMessage = "複数のスケジュールが重複している曜日があります。最高優先度のスケジュールが適用されます:\n\n" + conflicts.joined(separator: "\n")
+            conflictMessage = String(localized: "複数のスケジュールが重複している曜日があります。最高優先度のスケジュールが適用されます:\n\n") + conflicts.joined(separator: "\n")
             showingConflictAlert = true
         }
     }
